@@ -1,6 +1,6 @@
 %% Grader 3: Viga hermítica de sección variable con 4 elementos
 
-clear
+clc;clear;close all;
 format short
 %% Datos de entrada
 

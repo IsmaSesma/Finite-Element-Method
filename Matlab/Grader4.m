@@ -1,7 +1,8 @@
 %% Grader 4: Elementos viga Timoshenko y MPCs
 
-clear
+clc;clear;close all;
 format long g
+
 %% Datos
 
 % Geométricos generales
