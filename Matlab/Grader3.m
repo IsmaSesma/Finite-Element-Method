@@ -64,7 +64,7 @@ conectividad_e(:,2) = 2:1:nn;
 K = zeros(nn*gdln);   % Declara la matriz de rigidez global
 F = zeros(nn*gdln,1); % Declara el vector de fuerzas nodales en c.globales
 
-for e = 1:ne; % Almacen de los grados de libertad de cada elemento   
+for e = 1:ne % Almacen de los grados de libertad de cada elemento   
     index = conectividad_e(e,:); % Indice de posicion de los nodos en global
     x1 = coord_n(index(1),1); x2 = coord_n(index(2),1);
     Le = x2-x1; Je = Le/2; iJe = 1/Je; % Jacobiano de la transformacion de cada elemento
@@ -103,11 +103,12 @@ for e = 1:ne; % Almacen de los grados de libertad de cada elemento
         Ie_ = [Iy_(x1,a0,L,t);Iy_(x2,a0,L,t)];
         Ie = Ne*Ie_;
         
-        Kef = Kef + Bef'*E*Ie*Bef*Je*w;
+        Kef = Kef + Bef'*E*Ie*Bef*Je*w; 
         
     end
     
     K(gdlef,gdlef)=K(gdlef,gdlef)+Kef; % Ensamblaje de la rigidez de flexion en la matriz global
+    
     
     % Fuerzas axiles
 
