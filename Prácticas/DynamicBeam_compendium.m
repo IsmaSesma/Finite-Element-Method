@@ -127,7 +127,7 @@ for e = 1:ne
  % Second compute the lumped mass matrix
 
     Mle = zeros(4);     % Initialization of the lumped mass matrix of one element
-    Mle = beam.rho*beam.b*beam.t*1/nn*[1/3 0 0 0; 0 0 0 0; 0 0 1/3 0; 0 0 0 0];
+    Mle = beam.rho*beam.b*beam.t*1/nn*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
 
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end

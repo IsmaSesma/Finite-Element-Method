@@ -14,7 +14,7 @@ beam.m = 1;
 beam.rho = beam.m/beam.L/beam.b/beam.t;
 beam.rhoL = beam.m/beam.L;
 
-%% STIFFNESS BEAM MATRIX
+%% STIFFNESS AND INERTIA BEAM MATRICES
 
 ne = 2;         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = 3;         % Number of nodes
@@ -29,6 +29,8 @@ connect_e(:,1) = 1:1:ne;
 connect_e(:,2) = 2:1:nn;
 
 K = zeros(DOF);     % Initilization of the stiffness matrix
+M_consist = zeros(DOF); % Consistent mass matrix
+M_lumped = zeros(DOF);  % Lumped mass matrix
 
 for e = 1:ne
     index = connect_e(e,:);                                    
@@ -39,53 +41,36 @@ for e = 1:ne
     dofe = [index(1)*dofn-1 index(1)*dofn...                    % DOF of each element
             index(2)*dofn-1 index(2)*dofn];
 
+% STIFFNESS
+
     Kef = zeros(4);     % Initialization of the flexion stiffness matrix of one element
      
     k = beam.E*beam.Ixx/Le^3;
     Kef = k*[12 6*Le -12 6*Le;...
-               6*Le 4*Le^2 -6*Le 2*Le^2;...
-               -12 -6*Le 12 -6*Le;...
-               6*Le 2*Le^2 -6*Le 4*Le^2];
+             6*Le 4*Le^2 -6*Le 2*Le^2;...
+             -12 -6*Le 12 -6*Le;...
+             6*Le 2*Le^2 -6*Le 4*Le^2];
 
     K(dofe, dofe) = K(dofe, dofe) + Kef;
-end
 
-%% INERTIA BEAM MATRIX
+% INERTIA
 
-M_consist = zeros(DOF); % Consistent mass matrix
-M_lumped = zeros(DOF);  % Lumped mass matrix
-
-for e = 1:ne
-    index = connect_e(e,:);                                    
-    x1 = coord_n(index(1),1); x2 = coord_n(index(2),1);
-    Le = x2 - x1;                                              
-    Je = Le/2; iJe = 1/Je;                                      
-
-    dofe = [index(1)*dofn-1 index(1)*dofn...                   
-            index(2)*dofn-1 index(2)*dofn];
-
-% First compute the consistent mass matrix
+    % First compute the consistent mass matrix
 
     Mce = zeros(4);
 
-    k = beam.rho*beam.b*beam.t*Le/420;             
-    Mce = k*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];
+    m = beam.rho*beam.b*beam.t*Le;                  % Mass of the element          
+    Mce = m/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];
 
     M_consist(dofe,dofe) = M_consist(dofe,dofe) + Mce;
 
  % Second compute the lumped mass matrix
 
     Mle = zeros(4);     % Initialization of the lumped mass matrix of one element
-    Mle = beam.rho*beam.b*beam.t*1/nn*[1/3 0 0 0; 0 0 0 0; 0 0 1/3 0; 0 0 0 0];
+    Mle = m/ne*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
 
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end
-
-
-
-
-
-
 
 
 
