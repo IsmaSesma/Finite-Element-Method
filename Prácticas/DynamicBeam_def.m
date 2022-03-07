@@ -16,8 +16,9 @@ beam.rhoL = beam.m/beam.L;
 
 %% IMPUT DATA
 
-p = [1; 1; 1; 1; 1; 1];         % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
-Omega = 1;                      % Frecuency of the input force
+p = [0; 0; 1; 0; 0; 0];         % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+F = 800;                        % Maximum frecuency
+f = (1:1:F);                    % Frecuency sweep of the input force
 
 %% STIFFNESS AND INERTIA BEAM MATRICES
 
@@ -60,7 +61,7 @@ for e = 1:ne
 
     % First compute the consistent mass matrix
 
-    m = beam.rho*beam.b*beam.t*Le;                  % Mass of the element          
+    m = beam.rho*beam.b*beam.t*Le;            % Mass of the element          
     Mce = m/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];
 
     M_consist(dofe,dofe) = M_consist(dofe,dofe) + Mce;
@@ -75,11 +76,47 @@ end
 %% RESOLUTION OF THE DYNAMIC SYSTEM (q0[[K] - w^2[M]] = p0)
 % Dumped is assumed negligible
 
-D_c = (K - Omega^2*M_consist);          % Dynamic stiffness matrix with consistent mass matrix
-q_c = D_c\p;                            % Displacement's amplitudes with consistent mass matrix
+D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
+q0_c = zeros(DOF,F); q0_l = zeros(DOF,F);
+q_c = zeros(DOF,F); q_l = zeros(DOF,F);
 
-D_l = (K - Omega^2*M_lumped);           % Dynamic stiffness matrix with lumped mass matrix
-q_l = D_l\p;                            % Displacement's amplitudes with lumped mass matrix
+for i = 1:F           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
+
+    D_c(:,:,i) = (K - (2*pi*i)^2*M_consist);         % Dynamic stiffness matrix with consistent mass matrix
+    q0_c(:,i) = D_c(:,:,i)\p;                          % Displacement's amplitudes with consistent mass matrix
+
+    D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);            % Dynamic stiffness matrix with lumped mass matrix
+    q0_l(:,i) = D_l(:,:,i)\p;                          % Displacement's amplitudes with lumped mass matrix
+
+    q_c(:,i) = q0_c(:,i)*exp(1i*i);                    % Complex displacement with consistent mass matrix
+    q_l(:,i) = q0_l(:,i)*exp(1i*i);                    % Complex displacement with lumped mass matrix
+
+end
+
+% Squeeze of vectors of amplitude in order to simplify graphics
+
+Q0_c = squeeze(q0_c(1,:));
+Q0_l = squeeze(q0_l(1,:));
+Q_c = squeeze(q_c(1,:));
+
+%% FIGURES
+
+
+% Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
+close all
+figure(1)
+semilogy(f,abs(Q0_c))                
+title("Amplitude Bode Diagram","FontSize",12)
+xlabel("Frecuency [Hz]"); ylabel("log(Amplitude) [m]");
+hold on
+semilogy(f,abs(Q0_l))                       
+legend("Consistent mass matrix", "Lumped mass matrix")
+
+% Plots Phase vs Frecuency 
+figure(2)
+plot(f,angle(Q_c))                  
+title("Phase Bode Diagram","FontSize",12)
+xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
 
 
 

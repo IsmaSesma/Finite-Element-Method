@@ -22,9 +22,9 @@ beam.rhoL = beam.m/beam.L;
 
 %% IMPUT DATA
 
-p = zeros(22,1);         % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
-p(11,1) = 1; 
- f = (1:1:1600);                  % Range of frecuencies of interest
+p = zeros(6,1);         % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+p(3,1) = 1; 
+f = (1:1:1600);                  % Range of frecuencies of interest
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -46,8 +46,8 @@ w_ip.fv = [(322-13*sqrt(70))/900 (322+13*sqrt(70))/900 128/225 (322+13*sqrt(70))
 
 %% STIFFNESS BEAM MATRIX
 
-ne = 10;         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
-nn = 11;         % Number of nodes
+ne = 2;         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+nn = 3;         % Number of nodes
 dofn = 2;       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;  % Total dof
 
@@ -146,14 +146,14 @@ q_c = zeros(DOF,1600); q_l = zeros(DOF,1600);
 
 for i = 1:1600           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
 
-    D_c(:,:,i) = (K - (2*pi*i)^2*M_consist_2);          % Dynamic stiffness matrix with consistent mass matrix
-    q0_c(:,i) = D_c(:,:,i)\p;                         % Displacement's amplitudes with consistent mass matrix
+    D_c(:,:,i) = (K - (2*pi*i)^2*M_consist_2);         % Dynamic stiffness matrix with consistent mass matrix
+    q0_c(:,i) = D_c(:,:,i)\p;                          % Displacement's amplitudes with consistent mass matrix
 
-    D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);               % Dynamic stiffness matrix with lumped mass matrix
-    q0_l(:,i) = D_l(:,:,i)\p;                         % Displacement's amplitudes with lumped mass matrix
+    D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);            % Dynamic stiffness matrix with lumped mass matrix
+    q0_l(:,i) = D_l(:,:,i)\p;                          % Displacement's amplitudes with lumped mass matrix
 
-    q_c(:,i) = q0_c(:,i)*exp(1i*i);                   % Complex displacement with consistent mass matrix
-    q_l(:,i) = q0_l(:,i)*exp(1i*i);                   % Complex displacement with lumped mass matrix
+    q_c(:,i) = q0_c(:,i)*exp(1i*i);                    % Complex displacement with consistent mass matrix
+    q_l(:,i) = q0_l(:,i)*exp(1i*i);                    % Complex displacement with lumped mass matrix
 
 end
 
