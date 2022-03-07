@@ -7,16 +7,24 @@
 % for the final and optimize code go DynamicBeam_def.
 
 clc;clear;close all;
+
+tic
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 20E9;
-beam.L = 1;
-beam.b = 1;
-beam.t = 1;
+beam.E = 2E9;
+beam.L = 0.2;
+beam.b = 0.02;
+beam.t = 0.004;
 beam.Ixx = beam.b*beam.t^3/12;
-beam.m = 1;
+beam.m = 0.03;
 beam.rho = beam.m/beam.L/beam.b/beam.t;
 beam.rhoL = beam.m/beam.L;
+
+%% IMPUT DATA
+
+p = zeros(22,1);         % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+p(11,1) = 1; 
+ f = (1:1:1600);                  % Range of frecuencies of interest
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -38,8 +46,8 @@ w_ip.fv = [(322-13*sqrt(70))/900 (322+13*sqrt(70))/900 128/225 (322+13*sqrt(70))
 
 %% STIFFNESS BEAM MATRIX
 
-ne = 2;         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
-nn = 3;         % Number of nodes
+ne = 10;         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+nn = 11;         % Number of nodes
 dofn = 2;       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;  % Total dof
 
@@ -76,8 +84,6 @@ for e = 1:ne
 
      % Since the beam is a simple structrue to model, it can also be done with
      % the analytical formula available in literature
-
-     Kef_ = zeros(4);
      
      k = beam.E*beam.Ixx/Le^3;
      Kef_ = k*[12 6*Le -12 6*Le;...
@@ -126,28 +132,55 @@ for e = 1:ne
 
  % Second compute the lumped mass matrix
 
-    Mle = zeros(4);     % Initialization of the lumped mass matrix of one element
-    Mle = beam.rho*beam.b*beam.t*1/nn*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
+    Mle = beam.rho*beam.b*beam.t*Le/2*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
 
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end
 
+%% RESOLUTION OF THE DYNAMIC SYSTEM (q0[[K] - w^2[M]] = p0)
+% Dumped is assumed negligible
+
+D_c = zeros(DOF,DOF,1600); D_l = zeros(DOF,DOF,1600);
+q0_c = zeros(DOF,1600); q0_l = zeros(DOF,1600);
+q_c = zeros(DOF,1600); q_l = zeros(DOF,1600);
+
+for i = 1:1600           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
+
+    D_c(:,:,i) = (K - (2*pi*i)^2*M_consist_2);          % Dynamic stiffness matrix with consistent mass matrix
+    q0_c(:,i) = D_c(:,:,i)\p;                         % Displacement's amplitudes with consistent mass matrix
+
+    D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);               % Dynamic stiffness matrix with lumped mass matrix
+    q0_l(:,i) = D_l(:,:,i)\p;                         % Displacement's amplitudes with lumped mass matrix
+
+    q_c(:,i) = q0_c(:,i)*exp(1i*i);                   % Complex displacement with consistent mass matrix
+    q_l(:,i) = q0_l(:,i)*exp(1i*i);                   % Complex displacement with lumped mass matrix
+
+end
+
+% Squeeze of vectors of amplitude in order to simplify graphics
+
+Q0_c = squeeze(q0_c(1,:));
+Q0_l = squeeze(q0_l(1,:));
+Q_c = squeeze(q_c(1,:));
+
+%% FIGURES
+
+close all
+figure(1)
+semilogy(f,abs(Q0_c))                       % Plots Amplitude vs Frecuency
+title("Amplitude Bode Diagram with consistent mass matrix","FontSize",12)
+xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]");
+hold on
+semilogy(f,abs(Q0_l))                       % Plots Amplitude vs Frecuency
+
+ 
+% figure(3)
+% plot(f,angle(Q_c))                 % Plots Phase vs Frecuency
+% title("Phase Bode Diagram","FontSize",12)
+% xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+toc
 
 %% FUNCTIONS
 

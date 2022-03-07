@@ -5,14 +5,19 @@
 clc;clear;close all;
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 20E9;
-beam.L = 1;
-beam.b = 1;
-beam.t = 1;
+beam.E = 2E9;
+beam.L = 0.2;
+beam.b = 0.02;
+beam.t = 0.004;
 beam.Ixx = beam.b*beam.t^3/12;
-beam.m = 1;
+beam.m = 0.03;
 beam.rho = beam.m/beam.L/beam.b/beam.t;
 beam.rhoL = beam.m/beam.L;
+
+%% IMPUT DATA
+
+p = [1; 1; 1; 1; 1; 1];         % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+Omega = 1;                      % Frecuency of the input force
 
 %% STIFFNESS AND INERTIA BEAM MATRICES
 
@@ -42,8 +47,6 @@ for e = 1:ne
             index(2)*dofn-1 index(2)*dofn];
 
 % STIFFNESS
-
-    Kef = zeros(4);     % Initialization of the flexion stiffness matrix of one element
      
     k = beam.E*beam.Ixx/Le^3;
     Kef = k*[12 6*Le -12 6*Le;...
@@ -57,8 +60,6 @@ for e = 1:ne
 
     % First compute the consistent mass matrix
 
-    Mce = zeros(4);
-
     m = beam.rho*beam.b*beam.t*Le;                  % Mass of the element          
     Mce = m/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];
 
@@ -66,19 +67,19 @@ for e = 1:ne
 
  % Second compute the lumped mass matrix
 
-    Mle = zeros(4);     % Initialization of the lumped mass matrix of one element
-    Mle = m/ne*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
+    Mle = m/2*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
 
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end
 
+%% RESOLUTION OF THE DYNAMIC SYSTEM (q0[[K] - w^2[M]] = p0)
+% Dumped is assumed negligible
 
+D_c = (K - Omega^2*M_consist);          % Dynamic stiffness matrix with consistent mass matrix
+q_c = D_c\p;                            % Displacement's amplitudes with consistent mass matrix
 
-
-
-
-
-
+D_l = (K - Omega^2*M_lumped);           % Dynamic stiffness matrix with lumped mass matrix
+q_l = D_l\p;                            % Displacement's amplitudes with lumped mass matrix
 
 
 
