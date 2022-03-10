@@ -4,34 +4,38 @@
 
 % This file works as a compendium where I have been coding
 % different methods and alternatives to do the same things, 
-% for the final and optimize code go DynamicBeam_def.
+% for the final and optimize code go to aDynamicBeam_def.m
 
 clc;clear;close all;
 
 tic
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 2E9;
-beam.L = 0.2;
-beam.b = 0.02;
-beam.t = 0.004;
-beam.Ixx = beam.b*beam.t^3/12;
-beam.m = 0.03;
-beam.rho = beam.m/beam.L/beam.b/beam.t;
+beam.E = 2E9;                               % Elastic modulus
+beam.L = 0.2;                               % Beam's length
+beam.b = 0.02;                              % Beam's width
+beam.t = 0.004;                             % Beam's thickness
+beam.Ixx = beam.b*beam.t^3/12;              % Beam's area moment of inertia
+beam.m = 0.03;                              % Beam's ,ass
+beam.rho = beam.m/beam.L/beam.b/beam.t;     % Beam's density
+beam.eta = [4.73 7.853 10.996 14.137];      % Free-Free beam's η coeficients
+beam.x = [0:0.001:0.2];                     % Beam's partition
 
 %% IMPUT DATA
 
 
-ne = 2;              % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
-nn = ne + 1;         % Number of nodes
-dofn = 2;            % Degrees of freedom per node (only considering flexion)
-DOF = dofn*nn;       % Total dof
+ne = 2;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+nn = ne + 1;                    % Number of nodes
+dofn = 2;                       % Degrees of freedom per node (only considering flexion)
+DOF = dofn*nn;                  % Total dof
 
 p = zeros(DOF,1);
 p(3)= 1;                        % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 800;                        % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 mode = 3;                       % DOF plotted
+
+c = sqrt(beam.E*beam.Ixx/beam.rho/beam.t/beam.b);
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -161,7 +165,6 @@ end
 
 % Natural frecuencies (to be compared with graphics)
 
-c = sqrt(beam.E*beam.Ixx/beam.rho/beam.b/beam.t);
 w1 = 0;                     % Rigid-body motion
 w2 = 4.730^2*c/beam.L^2/2/pi;
 w3 = 7.853^2*c/beam.L^2/2/pi;
@@ -197,8 +200,17 @@ plot(f,unwrap(angle(Q_l)))
 legend("Consistent mass matrix", "Lumped mass matrix")
 
 
-%% CONTINUOUS MODEL
+%% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
+% Mode shapes (Ф_j)
+
+D = zeros(size(beam.eta));
+phi = zeros(size(beam.eta,2),size(beam.x,2));
+
+for i = 1:4
+    D(:,i) = - (cosh(beam.eta(i)*beam.L) - cos(beam.eta(i)*beam.L)/(sinh(beam.eta(i)*beam.L) + sin(beam.eta(i)*beam.L)));
+    phi(i,:) = (sinh(beam.eta(i)*beam.x) + sin(beam.eta(i)*beam.x) + D(i)*(cosh(beam.eta(i)*beam.x) + cos(beam.eta(i)*beam.x)));
+end
 
 toc
 
