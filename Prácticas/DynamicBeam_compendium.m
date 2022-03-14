@@ -11,15 +11,16 @@ clc;clear;close all;
 tic
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 2E9;                               % Elastic modulus
-beam.L = 0.2;                               % Beam's length
-beam.b = 0.02;                              % Beam's width
-beam.t = 0.004;                             % Beam's thickness
-beam.Ixx = beam.b*beam.t^3/12;              % Beam's area moment of inertia
-beam.m = 0.03;                              % Beam's ,ass
-beam.rho = beam.m/beam.L/beam.b/beam.t;     % Beam's density
-beam.eta = [4.73 7.853 10.996 14.137];      % Free-Free beam's η coeficients
-beam.x = [0:0.001:0.2];                     % Beam's partition
+beam.E = 2E9;                                           % Elastic modulus
+beam.L = 0.2;                                           % Beam's length
+beam.b = 0.02;                                          % Beam's width
+beam.t = 0.004;                                         % Beam's thickness
+beam.Ixx = beam.b*beam.t^3/12;                          % Beam's area moment of inertia
+beam.m = 0.03;                                          % Beam's mass
+beam.rho = beam.m/beam.L/beam.b/beam.t;                 % Beam's density
+beam.etal = [4.73 7.853 10.996];                  % Free-Free beam's η coeficients
+beam.sigma = [0.982502215 1.000777312 0.99996645];      % Sigma coeficients
+beam.x = [0:0.001:0.2];                                 % Beam's partition
 
 %% IMPUT DATA
 
@@ -204,14 +205,34 @@ legend("Consistent mass matrix", "Lumped mass matrix")
 
 % Mode shapes (Ф_j)
 
-D = zeros(size(beam.eta));
-phi = zeros(size(beam.eta,2),size(beam.x,2));
+    % Done with Shabana ecuation
 
-for i = 1:4
-    D(:,i) = - (cosh(beam.eta(i)*beam.L) - cos(beam.eta(i)*beam.L)/(sinh(beam.eta(i)*beam.L) + sin(beam.eta(i)*beam.L)));
-    phi(i,:) = (sinh(beam.eta(i)*beam.x) + sin(beam.eta(i)*beam.x) + D(i)*(cosh(beam.eta(i)*beam.x) + cos(beam.eta(i)*beam.x)));
+D = zeros(size(beam.etal));
+phi = zeros(size(beam.etal,2),size(beam.x,2));
+
+for i = 1:size(beam.etal,2)
+    D(:,i) = - ((cosh(beam.etal(i)) - cos(beam.etal(i)))/(sinh(beam.etal(i)) + sin(beam.etal(i))));
+    phi(i,:) = -(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x) + D(i)*(cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x)));
 end
 
+figure(3)
+plot(beam.x,phi)
+title("First three mode shapes of a beam with free free ends")
+legend("First mode", "Second mode", "Third mode")
+xlabel("X-coordinate [m]"); ylabel("Deformation")
+
+    % Done with Blevins sigma coeficient
+
+for i = 1:size(beam.etal,2)
+    phi(i,:) = -beam.sigma(i)*(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x)) + (cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x));
+end
+
+
+figure(4)
+plot(beam.x,phi)
+title("First three mode shapes of a beam with free free ends")
+legend("First mode", "Second mode", "Third mode")
+xlabel("X-coordinate [m]"); ylabel("Deformation")
 toc
 
 %% FUNCTIONS

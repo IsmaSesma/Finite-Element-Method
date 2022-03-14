@@ -14,8 +14,8 @@ beam.t = 0.004;                                     % Beam's thickness
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
 beam.m = 0.03;                                      % Beam's ,ass
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
-beam.eta = [4.73 7.853 10.996];                     % Free-Free beam's η coeficients
-beam.x = [0:0.001:beam.L];                          % Beam's partition
+beam.etal = [4.73 7.853 10.996];                    % Free-Free beam's ηl coeficients
+beam.x = (0:0.001:beam.L);                          % Beam's partition
 c = sqrt(beam.E*beam.Ixx/beam.rho/beam.b/beam.t);   % Constant to be used in continuous model   
 
 %% INPUT DATA
@@ -67,14 +67,14 @@ for e = 1:ne
 
   % First compute the consistent mass matrix
 
-    m = beam.rho*beam.b*beam.t*Le;            % Mass of the element          
-    Mce = m/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];
+    m_e = beam.rho*beam.b*beam.t*Le;            % Mass of the element          
+    Mce = m_e/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];
 
     M_consist(dofe,dofe) = M_consist(dofe,dofe) + Mce;
 
  % Second compute the lumped mass matrix
 
-    Mle = m/2*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
+    Mle = m_e/2*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
 
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end
@@ -119,38 +119,65 @@ Q_l = squeeze(q_l(mode,:));
 close all
 figure(1)
 semilogy(f,abs(Q0_c))                
-title("Amplitude Bode Diagram","FontSize",12)
 hold on
-semilogy(f,abs(Q0_l))                       
+semilogy(f,abs(Q0_l))      
+title("Amplitude Bode Diagram","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]")
 
 % Plots Angular offset vs Frecuency 
 figure(2)
 plot(f,unwrap(angle(Q_c)))                  
-title("Angular offset Bode Diagram","FontSize",12)
 hold on
 plot(f,unwrap(angle(Q_l)))
+title("Angular offset Bode Diagram","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
 
 %% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
-% Mode shapes (Ф_j)
+% Mode shapes (Ф_j(x))
 
-D = zeros(size(beam.eta));
-phi = zeros(size(beam.eta,2),size(beam.x,2));
+D = zeros(size(beam.etal));
+phi = zeros(size(beam.etal,2),size(beam.x,2));
 
-for i = 1:size(beam.eta,2)
-    D(:,i) = - (cosh(beam.eta(i)*beam.L) - cos(beam.eta(i)*beam.L)/(sinh(beam.eta(i)*beam.L) + sin(beam.eta(i)*beam.L)));
-    phi(i,:) = sinh(beam.eta(i)*beam.x) + sin(beam.eta(i)*beam.x) + D(i)*(cosh(beam.eta(i)*beam.x) + cos(beam.eta(i)*beam.x));
+for i = 1:size(beam.etal,2)
+    D(:,i) = - ((cosh(beam.etal(i)) - cos(beam.etal(i)))/(sinh(beam.etal(i)) + sin(beam.etal(i))));
+    phi(i,:) = -(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x) + D(i)*(cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x)));
 end
 
 figure(3)
 plot(beam.x,phi)
-title("First four mode shapes of a beam with free free ends")
+title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
+
+% Time response (q(t))
+
+omega = c*beam.etal/beam.L;
+mj = zeros(1,size(beam.etal,2));
+kj = zeros(1,size(beam.etal,2));
+q0 = zeros(1,size(beam.etal,2));
+
+for i = 1:size(beam.etal,2)
+    mj(i) = beam.rho*beam.b*beam.t*trapz(phi(i,:).^2,2);              % Equivalent mass
+    kj(i) = beam.E*beam.Ixx*trapz(diff(phi(i,:),2).^2);               % Eqiuvalent stiffness
+    q0(i) = p(3)*phi(i,100)/(-mj(i)*omega(i)^2 + kj(i));              % Amplitude of the displacement
+end
+
+% syms t                                      % Time as a symbolic variable
+t = 2;
+q = q0*exp(2*pi*1i*omega*t)';               % Time response function
+
+% Beam's transverse vibration
+
+v = phi*q;
+
+figure(4)
+plot(beam.x,v)
+title("Response of a continuous free-free beam")
+legend("First mode", "Second mode", "Third mode")
+xlabel("X-coordinate [m]"); ylabel("Transverse vibration")
 
 toc
 
