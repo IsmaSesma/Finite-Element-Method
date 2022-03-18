@@ -154,30 +154,24 @@ xlabel("X-coordinate [m]"); ylabel("Deformation")
 
 % Time response (q(t))
 
-omega = c*beam.etal/beam.L;
 mj = zeros(1,size(beam.etal,2));
 kj = zeros(1,size(beam.etal,2));
-q0 = zeros(1,size(beam.etal,2));
+q0 = zeros(size(beam.etal,2),size(f,2));
 
 for i = 1:size(beam.etal,2)
-    mj(i) = beam.rho*beam.b*beam.t*trapz(phi(i,:).^2,2);              % Equivalent mass
-    kj(i) = beam.E*beam.Ixx*trapz(diff(phi(i,:),2).^2);               % Eqiuvalent stiffness
-    q0(i) = p(3)*phi(i,100)/(-mj(i)*omega(i)^2 + kj(i));              % Amplitude of the displacement
+    mj(i) = beam.rho*beam.b*beam.t*trapz(phi(i,:).^2,2);                     % Equivalent mass
+    kj(i) = beam.E*beam.Ixx*trapz(diff(phi(i,:),2).^2);                      % Equivalent stiffness
+    q0(i,:) = p(3)*phi(i,100)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));              % Modal coordinates
 end
 
-% syms t                                      % Time as a symbolic variable
-t = 2;
-q = q0*exp(2*pi*1i*omega*t)';               % Time response function
+% Beam's transverse vibration (v(x,t) = (ΣФ(x)*q0(Ω))*exp(iΩ*t))
 
-% Beam's transverse vibration
-
-v = phi*q;
+v0 = phi'*q0;                   % Amplitude of the vibration
 
 figure(4)
-plot(beam.x,v)
+semilogy(f,v0(:,:))
 title("Response of a continuous free-free beam")
-legend("First mode", "Second mode", "Third mode")
-xlabel("X-coordinate [m]"); ylabel("Transverse vibration")
+xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
 toc
 

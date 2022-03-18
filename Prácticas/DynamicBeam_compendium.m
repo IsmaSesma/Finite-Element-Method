@@ -18,7 +18,7 @@ beam.t = 0.004;                                         % Beam's thickness
 beam.Ixx = beam.b*beam.t^3/12;                          % Beam's area moment of inertia
 beam.m = 0.03;                                          % Beam's mass
 beam.rho = beam.m/beam.L/beam.b/beam.t;                 % Beam's density
-beam.etal = [4.73 7.853 10.996];                  % Free-Free beam's η coeficients
+beam.etal = [4.73 7.853 10.996];                        % Free-Free beam's ηl coeficients
 beam.sigma = [0.982502215 1.000777312 0.99996645];      % Sigma coeficients
 beam.x = [0:0.001:0.2];                                 % Beam's partition
 
@@ -30,8 +30,8 @@ nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof
 
-p = zeros(DOF,1);
-p(3)= 1;                        % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+p = zeros(DOF,1);               % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+p(3)= 1;                        
 F = 800;                        % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 mode = 3;                       % DOF plotted
@@ -159,14 +159,14 @@ for i = 1:F           % This loop makes a sweep in the frecuencies up to the max
     D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);            % Dynamic stiffness matrix with lumped mass matrix
     q0_l(:,i) = D_l(:,:,i)\p;                          % Displacement's amplitudes with lumped mass matrix
 
-    q_c(:,i) = q0_c(:,i)*exp(2*pi*1i*i);                    % Complex displacement with consistent mass matrix
-    q_l(:,i) = q0_l(:,i)*exp(2*pi*1i*i);                    % Complex displacement with lumped mass matrix
+    q_c(:,i) = q0_c(:,i)*exp(2*pi*1i*i);               % Complex displacement with consistent mass matrix
+    q_l(:,i) = q0_l(:,i)*exp(2*pi*1i*i);               % Complex displacement with lumped mass matrix
 
 end
 
 % Natural frecuencies (to be compared with graphics)
 
-w1 = 0;                     % Rigid-body motion
+w1 = 0;                             % Rigid-body motion
 w2 = 4.730^2*c/beam.L^2/2/pi;
 w3 = 7.853^2*c/beam.L^2/2/pi;
 w4 = 10.996^2*c/beam.L^2/2/pi;
@@ -234,6 +234,28 @@ title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
 toc
+
+
+% Time response (q(t))
+
+mj = zeros(1,size(beam.etal,2));
+kj = zeros(1,size(beam.etal,2));
+q0 = zeros(size(beam.etal,2),size(f,2));
+
+for i = 1:size(beam.etal,2)
+    mj(i) = beam.rho*beam.b*beam.t*trapz(phi(i,:).^2,2);                     % Equivalent mass
+    kj(i) = beam.E*beam.Ixx*trapz(diff(phi(i,:),2).^2);                      % Equivalent stiffness
+    q0(i,:) = p(3)*phi(i,101)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));              % Modal coordinates
+end
+
+% Beam's transverse vibration (v(x,t) = (ΣФ(x)*q0(Ω))*exp(iΩ*t))
+
+v0 = phi'*q0;                   % Amplitude of the vibration
+
+figure(4)
+plot(f,v0(:,:))
+title("Response of a continuous free-free beam")
+xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
 %% FUNCTIONS
 
