@@ -25,7 +25,7 @@ beam.x = [0:0.001:0.2];                                 % Beam's partition
 %% IMPUT DATA
 
 
-ne = 2;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+ne = 20;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof
@@ -36,7 +36,9 @@ F = 800;                        % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 mode = 3;                       % DOF plotted
 
-c = sqrt(beam.E*beam.Ixx/beam.rho/beam.t/beam.b);
+c = sqrt(beam.E*beam.Ixx/beam.rho/beam.t/beam.b);       % Constant to be used in continuous model
+
+a = 10; b = 5;                  % Propotional damping coefficient
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -144,7 +146,7 @@ for e = 1:ne
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end
 
-%% RESOLUTION OF THE DYNAMIC SYSTEM (q0[[K] - w^2[M]] = p0)
+%% RESOLUTION OF THE CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 % Dumped is assumed negligible
 
 D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
@@ -178,28 +180,77 @@ Q0_l = squeeze(q0_l(mode,:));
 Q_c = squeeze(q_c(mode,:));
 Q_l = squeeze(q_l(mode,:));
 
-%% FIGURES
-
+%% FIGURES OF CONSERVATIVE SYSTEM
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
 close all
 figure(1)
 semilogy(f,abs(Q0_c))                
-title("Amplitude Bode Diagram","FontSize",12)
+title("Amplitude Bode Diagram of Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]");
 hold on
 semilogy(f,abs(Q0_l))                       
 legend("Consistent mass matrix", "Lumped mass matrix")
-
  
 % Plots Angular offset vs Frecuency 
 figure(2)
 plot(f,unwrap(angle(Q_c)))                  
-title("Angular offset Bode Diagram","FontSize",12)
+title("Angular offset Bode Diagram of Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
 hold on
 plot(f,unwrap(angle(Q_l)))
 legend("Consistent mass matrix", "Lumped mass matrix")
 
+%% PROPORTIONAL DAMPING MODEL ([F] = α[M] + β[K])
+
+% Dumping matrix with consistent mass matrix
+F_c = a*M_consist_2 + b*K;
+% Dumping matrix with lumped mass matrix
+F_l = a*M_lumped + b*K;
+
+%% RESOLUTION OF THE NON-CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M] + i*Ω*[F]] = p0)
+
+D_dc = zeros(DOF,DOF,F); D_dl = zeros(DOF,DOF,F);
+q0_dc = zeros(DOF,F); q0_dl = zeros(DOF,F);
+q_dc = zeros(DOF,F); q_dl = zeros(DOF,F);
+
+for i = 1:F           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
+
+    D_dc(:,:,i) = (K - (2*pi*i)^2*M_consist_2 + 1i*(2*pi*i)*F_c);         % Dynamic stiffness matrix with consistent mass matrix
+    q0_dc(:,i) = D_dc(:,:,i)\p;                                           % Displacement's amplitudes with consistent mass matrix
+
+    D_dl(:,:,i) = (K - (2*pi*i)^2*M_lumped + 1i*(2*pi*i)*F_c);            % Dynamic stiffness matrix with lumped mass matrix
+    q0_dl(:,i) = D_dl(:,:,i)\p;                                           % Displacement's amplitudes with lumped mass matrix
+
+    q_dc(:,i) = q0_dc(:,i)*exp(2*pi*1i*i);                                % Complex displacement with consistent mass matrix
+    q_dl(:,i) = q0_dl(:,i)*exp(2*pi*1i*i);                                % Complex displacement with lumped mass matrix
+
+end
+
+% Squeeze of vectors of amplitude in order to simplify graphics
+
+Q0_dc = squeeze(q0_dc(mode,:));
+Q0_dl = squeeze(q0_dl(mode,:));
+Q_dc = squeeze(q_dc(mode,:));
+Q_dl = squeeze(q_dl(mode,:));
+
+%% FIGURES OF NON-CONSERVATIVE SYSTEM
+% Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
+figure(3)
+semilogy(f,abs(Q0_dc))                
+title("Amplitude Bode Diagram of Non-Conservative System","FontSize",12)
+xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]");
+hold on
+semilogy(f,abs(Q0_dl))                       
+legend("Consistent mass matrix", "Lumped mass matrix")
+ 
+% Plots Angular offset vs Frecuency 
+figure(4)
+plot(f,unwrap(angle(Q_dc)))                  
+title("Angular offset Bode Diagram of Non-Conservative System","FontSize",12)
+xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
+hold on
+plot(f,unwrap(angle(Q_dl)))
+legend("Consistent mass matrix", "Lumped mass matrix")
 
 %% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
@@ -215,7 +266,7 @@ for i = 1:size(beam.etal,2)
     phi(i,:) = -(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x) + D(i)*(cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x)));
 end
 
-figure(3)
+figure(5)
 plot(beam.x,phi)
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
@@ -228,13 +279,14 @@ for i = 1:size(beam.etal,2)
 end
 
 
-figure(4)
+figure(6)
 plot(beam.x,phi)
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
 toc
 
+% Figures 3 and 4 should be the same
 
 % Time response (q(t))
 
@@ -242,18 +294,28 @@ mj = zeros(1,size(beam.etal,2));
 kj = zeros(1,size(beam.etal,2));
 q0 = zeros(size(beam.etal,2),size(f,2));
 
-for i = 1:size(beam.etal,2)
+mj_ = zeros(1,size(beam.etal,2));
+kj_ = zeros(1,size(beam.etal,2));
+q0_ = zeros(size(beam.etal,2),size(f,2));
+
+for i = 1:size(beam.etal,2)             % Done with trapz function
     mj(i) = beam.rho*beam.b*beam.t*trapz(phi(i,:).^2,2);                     % Equivalent mass
     kj(i) = beam.E*beam.Ixx*trapz(diff(phi(i,:),2).^2);                      % Equivalent stiffness
     q0(i,:) = p(3)*phi(i,101)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));              % Modal coordinates
 end
 
+% for i = 1:size(beam.etal,2)             % Done with integral function
+%     mj_(i) =  beam.rho*beam.b*beam.t*integral(phi(i,:).^2,0,beam.L);         % Equivalent mass
+%     kj_(i) = beam.E*beam.Ixx*integral(diff(phi(i,:),2).^2,0,beam.L);         % Equivalent stiffness
+%     q0_(i,:) = p(3)*phi(i,101)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));             % Modal coordinates
+% end
+
 % Beam's transverse vibration (v(x,t) = (ΣФ(x)*q0(Ω))*exp(iΩ*t))
 
 v0 = phi'*q0;                   % Amplitude of the vibration
 
-figure(4)
-plot(f,v0(:,:))
+figure(7)
+semilogy(f,v0(:,:))
 title("Response of a continuous free-free beam")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 

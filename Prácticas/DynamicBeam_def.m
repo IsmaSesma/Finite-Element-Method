@@ -20,7 +20,7 @@ c = sqrt(beam.E*beam.Ixx/beam.rho/beam.b/beam.t);   % Constant to be used in con
 
 %% INPUT DATA
 
-ne = 2;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+ne = 20;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof
@@ -29,10 +29,9 @@ p = zeros(DOF,1);
 p(3)= 1;                        % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 800;                        % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
-mode = 3;                       % DOF plotted
+mode = 21;                       % DOF plotted
 
 %% STIFFNESS AND INERTIA BEAM MATRICES
-
 
 coord_n = zeros(nn,2);                  % Nodal coordinates matrix
 coord_n(:,1) = 0:beam.L/ne:beam.L;      % Only X coordinate is different than 0
@@ -41,7 +40,7 @@ connect_e = zeros(ne,2);                % Connectivity matrix of elements throug
 connect_e(:,1) = 1:1:ne;
 connect_e(:,2) = 2:1:nn;
 
-K = zeros(DOF);     % Initilization of the stiffness matrix
+K = zeros(DOF);         % Initilization of the stiffness matrix
 M_consist = zeros(DOF); % Consistent mass matrix
 M_lumped = zeros(DOF);  % Lumped mass matrix
 
@@ -68,18 +67,18 @@ for e = 1:ne
   % First compute the consistent mass matrix
 
     m_e = beam.rho*beam.b*beam.t*Le;            % Mass of the element          
-    Mce = m_e/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];
+    Mce = m_e/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];     % Consistent mass matrix of each element
 
     M_consist(dofe,dofe) = M_consist(dofe,dofe) + Mce;
 
  % Second compute the lumped mass matrix
 
-    Mle = m_e/2*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];
+    Mle = m_e/2*[1 0 0 0; 0 0 0 0; 0 0 1 0; 0 0 0 0];       % Lumped mass matrix of each element
 
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end
 
-%% RESOLUTION OF THE DYNAMIC SYSTEM (q0[[K] - w^2[M]] = p0)
+%% RESOLUTION OF THE DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 % Dumped is assumed negligible
 
 D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
@@ -101,7 +100,7 @@ end
 
 % Natural frecuencies (to be compared with graphics)
 
-w1 = 0;                     % Rigid-body motion
+w1 = 0;                             % Rigid-body motion
 w2 = 4.730^2*c/beam.L^2/2/pi;
 w3 = 7.853^2*c/beam.L^2/2/pi;
 w4 = 10.996^2*c/beam.L^2/2/pi;
@@ -114,7 +113,6 @@ Q_c = squeeze(q_c(mode,:));
 Q_l = squeeze(q_l(mode,:));
 
 %% FIGURES
-
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
 close all
 figure(1)
