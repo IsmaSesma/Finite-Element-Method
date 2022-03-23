@@ -20,7 +20,7 @@ beam.m = 0.03;                                          % Beam's mass
 beam.rho = beam.m/beam.L/beam.b/beam.t;                 % Beam's density
 beam.etal = [4.73 7.853 10.996];                        % Free-Free beam's ηl coeficients
 beam.sigma = [0.982502215 1.000777312 0.99996645];      % Sigma coeficients
-beam.x = [0:0.001:0.2];                                 % Beam's partition
+beam.x = (0:0.001:beam.L);                              % Beam's partition
 
 %% IMPUT DATA
 
@@ -38,7 +38,7 @@ mode = 3;                       % DOF plotted
 
 c = sqrt(beam.E*beam.Ixx/beam.rho/beam.t/beam.b);       % Constant to be used in continuous model
 
-a = 10; b = 5;                  % Propotional damping coefficient
+a = 1E-4; b = 1E-4;                  % Propotional damping coefficient
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -55,8 +55,8 @@ w_ip.t = [5/9 8/9 5/9];
 chi_ip.ft = [-sqrt((3+2*sqrt(6/5))/7) -sqrt((3-2*sqrt(6/5))/7)  sqrt((3-2*sqrt(6/5))/7) sqrt((3+2*sqrt(6/5))/7)];   
 w_ip.ft = [(18-sqrt(30))/36 (18-sqrt(30))/36 (18+sqrt(30))/36 (18-sqrt(30))/36];
 % n = 5 quadrature
-chi_ip.fv = [-1/3*sqrt(5+2*sqrt(10/7))  -1/3*sqrt(5-2*sqrt(10/7)) 0 1/3*sqrt(5-2*sqrt(10/7)) 1/3*sqrt(5+2*sqrt(10/7))];   
-w_ip.fv = [(322-13*sqrt(70))/900 (322+13*sqrt(70))/900 128/225 (322+13*sqrt(70))/900 (322-13*sqrt(70))/900]; 
+chi_ip.ff = [-1/3*sqrt(5+2*sqrt(10/7))  -1/3*sqrt(5-2*sqrt(10/7)) 0 1/3*sqrt(5-2*sqrt(10/7)) 1/3*sqrt(5+2*sqrt(10/7))];   
+w_ip.ff = [(322-13*sqrt(70))/900 (322+13*sqrt(70))/900 128/225 (322+13*sqrt(70))/900 (322-13*sqrt(70))/900]; 
 
 %% STIFFNESS BEAM MATRIX
 
@@ -122,8 +122,8 @@ for e = 1:ne
 
     Mce = zeros(4);     % Initialization of the consistent mass matrix of one element
     for i = 1:5
-        chi = chi_ip.fv(i);
-        w = w_ip.fv(i);
+        chi = chi_ip.ff(i);
+        w = w_ip.ff(i);
         N = Nh(chi,Je);       % Hermitian form functions
 
         Mce = Mce + N'*beam.rho*beam.b*beam.t*N*Je*w;
@@ -161,9 +161,6 @@ for i = 1:F           % This loop makes a sweep in the frecuencies up to the max
     D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);            % Dynamic stiffness matrix with lumped mass matrix
     q0_l(:,i) = D_l(:,:,i)\p;                          % Displacement's amplitudes with lumped mass matrix
 
-    q_c(:,i) = q0_c(:,i)*exp(2*pi*1i*i);               % Complex displacement with consistent mass matrix
-    q_l(:,i) = q0_l(:,i)*exp(2*pi*1i*i);               % Complex displacement with lumped mass matrix
-
 end
 
 % Natural frecuencies (to be compared with graphics)
@@ -177,8 +174,6 @@ w4 = 10.996^2*c/beam.L^2/2/pi;
 
 Q0_c = squeeze(q0_c(mode,:));
 Q0_l = squeeze(q0_l(mode,:));
-Q_c = squeeze(q_c(mode,:));
-Q_l = squeeze(q_l(mode,:));
 
 %% FIGURES OF CONSERVATIVE SYSTEM
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
@@ -193,11 +188,11 @@ legend("Consistent mass matrix", "Lumped mass matrix")
  
 % Plots Angular offset vs Frecuency 
 figure(2)
-plot(f,unwrap(angle(Q_c)))                  
+plot(f,unwrap(angle(Q0_c)))                  
 title("Angular offset Bode Diagram of Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
 hold on
-plot(f,unwrap(angle(Q_l)))
+plot(f,unwrap(angle(Q0_l)))
 legend("Consistent mass matrix", "Lumped mass matrix")
 
 %% PROPORTIONAL DAMPING MODEL ([F] = α[M] + β[K])
@@ -221,17 +216,12 @@ for i = 1:F           % This loop makes a sweep in the frecuencies up to the max
     D_dl(:,:,i) = (K - (2*pi*i)^2*M_lumped + 1i*(2*pi*i)*F_c);            % Dynamic stiffness matrix with lumped mass matrix
     q0_dl(:,i) = D_dl(:,:,i)\p;                                           % Displacement's amplitudes with lumped mass matrix
 
-    q_dc(:,i) = q0_dc(:,i)*exp(2*pi*1i*i);                                % Complex displacement with consistent mass matrix
-    q_dl(:,i) = q0_dl(:,i)*exp(2*pi*1i*i);                                % Complex displacement with lumped mass matrix
-
 end
 
 % Squeeze of vectors of amplitude in order to simplify graphics
 
 Q0_dc = squeeze(q0_dc(mode,:));
 Q0_dl = squeeze(q0_dl(mode,:));
-Q_dc = squeeze(q_dc(mode,:));
-Q_dl = squeeze(q_dl(mode,:));
 
 %% FIGURES OF NON-CONSERVATIVE SYSTEM
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
@@ -245,18 +235,18 @@ legend("Consistent mass matrix", "Lumped mass matrix")
  
 % Plots Angular offset vs Frecuency 
 figure(4)
-plot(f,unwrap(angle(Q_dc)))                  
+plot(f,angle(Q0_dc))                  
 title("Angular offset Bode Diagram of Non-Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
 hold on
-plot(f,unwrap(angle(Q_dl)))
+plot(f,angle(Q0_dl))
 legend("Consistent mass matrix", "Lumped mass matrix")
 
 %% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
 % Mode shapes (Ф_j)
 
-    % Done with Shabana ecuation
+    % Done with Shabana equation
 
 D = zeros(size(beam.etal));
 phi = zeros(size(beam.etal,2),size(beam.x,2));
@@ -278,15 +268,13 @@ for i = 1:size(beam.etal,2)
     phi(i,:) = -beam.sigma(i)*(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x)) + (cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x));
 end
 
-
 figure(6)
 plot(beam.x,phi)
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
-toc
 
-% Figures 3 and 4 should be the same
+% Figures 5 and 6 should be the same
 
 % Time response (q(t))
 
@@ -297,28 +285,39 @@ q0 = zeros(size(beam.etal,2),size(f,2));
 mj_ = zeros(1,size(beam.etal,2));
 kj_ = zeros(1,size(beam.etal,2));
 q0_ = zeros(size(beam.etal,2),size(f,2));
-
+ 
 for i = 1:size(beam.etal,2)             % Done with trapz function
-    mj(i) = beam.rho*beam.b*beam.t*trapz(phi(i,:).^2,2);                     % Equivalent mass
-    kj(i) = beam.E*beam.Ixx*trapz(diff(phi(i,:),2).^2);                      % Equivalent stiffness
-    q0(i,:) = p(3)*phi(i,101)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));              % Modal coordinates
+    mj_(i) = beam.rho*beam.b*beam.t*trapz(beam.x,phi(i,:).^2,2);                     % Equivalent mass
+    kj_(i) = beam.E*beam.Ixx*trapz(beam.x(1:end-2),diff(phi(i,:),2).^2,2)*1E12;           % Equivalent stiffness
+    q0_(i,:) = p(3)*phi(i,101)./(-mj_(i)*(2*pi*f(:)).^2 + kj_(i));                     % Modal coordinates
 end
 
-% for i = 1:size(beam.etal,2)             % Done with integral function
-%     mj_(i) =  beam.rho*beam.b*beam.t*integral(phi(i,:).^2,0,beam.L);         % Equivalent mass
-%     kj_(i) = beam.E*beam.Ixx*integral(diff(phi(i,:),2).^2,0,beam.L);         % Equivalent stiffness
-%     q0_(i,:) = p(3)*phi(i,101)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));             % Modal coordinates
-% end
+for i = 1:size(beam.etal,2)             % Done with Simpson's integration rule
+    mj(i) = beam.rho*beam.b*beam.t*simps(beam.x,phi(i,:).^2,2);                      % Equivalent mass
+    kj(i) = beam.E*beam.Ixx*simps(beam.x(1:end-2),(diff(phi(i,:),2)).^2,2)*1E12;          % Equivalent stiffness
+    q0(i,:) = p(3)*phi(i,101)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));                      % Modal coordinates
+end
 
 % Beam's transverse vibration (v(x,t) = (ΣФ(x)*q0(Ω))*exp(iΩ*t))
 
 v0 = phi'*q0;                   % Amplitude of the vibration
+v0_ = phi'*q0_;
 
 figure(7)
-semilogy(f,v0(:,:))
-title("Response of a continuous free-free beam")
+semilogy(f,abs(v0(:,:)))
+title("Response of a continuous free-free beam using Simpson's rule")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
+figure(8)
+semilogy(f,abs(v0(:,:)))
+title("Response of a continuous free-free beam unsing 'trapz' function")
+xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
+
+disp('Frequencies of the discreete and continous model (Simpsons rule and trapz)')
+vw = [w2,w3,w4]';
+disp(num2str([vw, (sqrt(kj./mj)/2/pi())', (sqrt(kj_./mj_)/2/pi)']))
+
+toc
 %% FUNCTIONS
 
 function NH = Nh(chi,Je)          % Hermitic form functions
@@ -328,4 +327,3 @@ end
 function sd_NH = sd_Nh(chi,Je)    % Second derivative of hermitic form functions
     sd_NH = [(chi*3/2) Je*(chi*3-1)/2 -(chi*3/2) Je*(chi*3+1)/2];
 end
-
