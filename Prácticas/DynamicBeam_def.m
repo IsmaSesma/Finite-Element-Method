@@ -85,14 +85,18 @@ end
 D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
 q0_c = zeros(DOF,F); q0_l = zeros(DOF,F);
 q_c = zeros(DOF,F); q_l = zeros(DOF,F);
+Eigenvec_c = zeros(DOF,DOF,F); Eigenvec_l = zeros(DOF,DOF,F);
+Eigenval_c = zeros(DOF,DOF,F); Eigenval_l = zeros(DOF,DOF,F);
 
 for i = 1:F           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
 
-    D_c(:,:,i) = (K - (2*pi*i)^2*M_consist);           % Dynamic stiffness matrix with consistent mass matrix
-    q0_c(:,i) = D_c(:,:,i)\p;                          % Displacement's amplitudes with consistent mass matrix
+    D_c(:,:,i) = (K - (2*pi*i)^2*M_consist);                                              % Dynamic stiffness matrix with consistent mass matrix
+    q0_c(:,i) = D_c(:,:,i)\p;                                                             % Displacement's amplitudes with consistent mass matrix
+    [Eigenvec_c(:,:,i), Eigenval_c(:,:,F)] = eig(D_c(:,:,i));                             % Eigenvectors & Eigenvalues of D_c
 
-    D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);            % Dynamic stiffness matrix with lumped mass matrix
-    q0_l(:,i) = D_l(:,:,i)\p;                          % Displacement's amplitudes with lumped mass matrix
+    D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);                                               % Dynamic stiffness matrix with lumped mass matrix
+    q0_l(:,i) = D_l(:,:,i)\p;                                                             % Displacement's amplitudes with lumped mass matrix
+    [Eigenvec_l(:,:,i), Eigenval_l(:,:,i)] = eig(D_c(:,:,i));                             % Eigenvectors & Eigenvalues of D_c 
 
 end
 
@@ -108,14 +112,14 @@ w4 = 10.996^2*c/beam.L^2/2/pi;
 Q0_c = squeeze(q0_c(mode,:));
 Q0_l = squeeze(q0_l(mode,:));
 
-%% FIGURES
+%% FIGURES OF CONSERVATIVE SYSTEM
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
 close all
 figure(1)
 semilogy(f,abs(Q0_c))                
 hold on
 semilogy(f,abs(Q0_l))      
-title("Amplitude Bode Diagram","FontSize",12)
+title("Amplitude Bode Diagram of Conservative System","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]")
 
@@ -124,7 +128,7 @@ figure(2)
 plot(f,unwrap(angle(Q0_c)))                  
 hold on
 plot(f,unwrap(angle(Q0_l)))
-title("Angular offset Bode Diagram","FontSize",12)
+title("Angular offset Bode Diagram of Conservative System","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
 
@@ -175,6 +179,11 @@ hold on
 plot(f,angle(Q0_dl))
 legend("Consistent mass matrix", "Lumped mass matrix")
 
+%% MODAL SHAPES OF DISCREET MODEL (Natural frecuencies are the eigenvalues of the problem and modal shapes are the eigenvectors)
+
+% [Eigval_c, Eigenvec_c] = eig(Det_c);
+% [Eigval_l, Eigenvec_l] = eig(Det_l);
+
 %% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
 % Mode shapes (Ф_j(x))
@@ -210,7 +219,7 @@ end
 v0 = phi'*q0;                   % Amplitude of the vibration
 
 figure(6)
-semilogy(f,abs(v0(:,:)))
+semilogy(f,abs(v0(101,:)))
 title("Response of a continuous free-free beam")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
