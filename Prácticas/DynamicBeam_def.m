@@ -21,7 +21,7 @@ a = 1E-4; b = 1E-4;                                 % Propotional damping coeffi
 
 %% INPUT DATA
 
-ne = 20;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+ne = 100;                       % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof
@@ -30,7 +30,8 @@ p = zeros(DOF,1);
 p(3)= 1;                        % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 800;                        % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
-mode = 21;                       % DOF plotted
+dof = 4;                        % DOF plotted
+beam.modes = (1:5);             % Shape mode plotted (ascending order: first 2 are rigid solid and the other 3 are the ones we want)
 
 %% STIFFNESS AND INERTIA BEAM MATRICES
 
@@ -80,23 +81,20 @@ for e = 1:ne
 end
 
 %% RESOLUTION OF THE CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
+
 % Dumped is assumed negligible
 
 D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
 q0_c = zeros(DOF,F); q0_l = zeros(DOF,F);
 q_c = zeros(DOF,F); q_l = zeros(DOF,F);
-Eigenvec_c = zeros(DOF,DOF,F); Eigenvec_l = zeros(DOF,DOF,F);
-Eigenval_c = zeros(DOF,DOF,F); Eigenval_l = zeros(DOF,DOF,F);
 
 for i = 1:F           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
 
     D_c(:,:,i) = (K - (2*pi*i)^2*M_consist);                                              % Dynamic stiffness matrix with consistent mass matrix
     q0_c(:,i) = D_c(:,:,i)\p;                                                             % Displacement's amplitudes with consistent mass matrix
-    [Eigenvec_c(:,:,i), Eigenval_c(:,:,F)] = eig(D_c(:,:,i));                             % Eigenvectors & Eigenvalues of D_c
 
     D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);                                               % Dynamic stiffness matrix with lumped mass matrix
     q0_l(:,i) = D_l(:,:,i)\p;                                                             % Displacement's amplitudes with lumped mass matrix
-    [Eigenvec_l(:,:,i), Eigenval_l(:,:,i)] = eig(D_c(:,:,i));                             % Eigenvectors & Eigenvalues of D_c 
 
 end
 
@@ -109,10 +107,11 @@ w4 = 10.996^2*c/beam.L^2/2/pi;
 
 % Squeeze of vectors of amplitude in order to simplify graphics
 
-Q0_c = squeeze(q0_c(mode,:));
-Q0_l = squeeze(q0_l(mode,:));
+Q0_c = squeeze(q0_c(dof,:));
+Q0_l = squeeze(q0_l(dof,:));
 
 %% FIGURES OF CONSERVATIVE SYSTEM
+
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
 close all
 figure(1)
@@ -157,10 +156,11 @@ end
 
 % Squeeze of vectors of amplitude in order to simplify graphics
 
-Q0_dc = squeeze(q0_dc(mode,:));
-Q0_dl = squeeze(q0_dl(mode,:));
+Q0_dc = squeeze(q0_dc(dof,:));
+Q0_dl = squeeze(q0_dl(dof,:));
 
 %% FIGURES OF NON-CONSERVATIVE SYSTEM
+
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
 figure(3)
 semilogy(f,abs(Q0_dc))                
@@ -179,10 +179,47 @@ hold on
 plot(f,angle(Q0_dl))
 legend("Consistent mass matrix", "Lumped mass matrix")
 
-%% MODAL SHAPES OF DISCREET MODEL (Natural frecuencies are the eigenvalues of the problem and modal shapes are the eigenvectors)
+%% MODAL SHAPES OF DISCREET MODEL (Natural frequencies are the eigenvalues of the problem and modal shapes are the eigenvectors)
 
-% [Eigval_c, Eigenvec_c] = eig(Det_c);
-% [Eigval_l, Eigenvec_l] = eig(Det_l);
+% With consistent mass matrix
+[V_consist,D_consist] = eig(K,M_consist);
+[W_c,order_c] = sort(sum(sqrt(D_consist)./2./pi));                          % Vector of natural frequencies ordered in ascending order
+W_c = diag(W_c);                                                            % Natural frecuencies in a diagonal matrix
+V_consist = V_consist(:,order_c);                                           % Rewrite modal shapes so they match the adcending order of frequencies
+% With lumped mass matrix
+[V_lumped,D_lumped] = eig(K,M_lumped);
+[W_l,order_l] = sort(sum(sqrt(D_lumped)./2./pi,1));                         % Vector of natural frequencies ordered in ascending order
+W_l = diag(W_l);                                                            % Natural frecuencies in a diagonal matrix
+V_lumped = V_lumped(:,order_l);
+
+disp("Frequencies obtained by solving the eigenvalue problem")
+vw_eig_c = [W_c(3,3), W_c(4,4), W_c(5,5)]'; vw_eig_l = [W_l(3,3), W_l(4,4), W_l(5,5)]';   % Starts in 3rd because 1 and 2 are rigid solid modes 
+disp(num2str([vw_eig_c, vw_eig_l]))
+
+figure(5)
+plot(V_consist(1:2:DOF,mode))
+title("Mode shapes of with discreet model")
+xlabel("X-coordinate [m]"); ylabel("Deformation")
+hold on
+plot(V_lumped(1:2:DOF,mode)*275)
+legend("Consistent mass matrix","Lumped mass matrix")
+
+% Compute kj and mj with the discreet model in the modal space
+
+mj_c = sum(V_consist(:,beam.modes)'*M_consist*V_consist(:,beam.modes));
+kj_c = sum(V_consist(:,beam.modes)'*K*V_consist(:,beam.modes));
+
+mj_l = sum(V_lumped(:,beam.modes)'*M_lumped*V_lumped(:,beam.modes));
+kj_l = sum(V_lumped(:,beam.modes)'*K*V_lumped(:,beam.modes));
+
+% Compute ωj with kj and mj
+
+w_c = sqrt(kj_c./mj_c)/2/pi;
+w_l = sqrt(kj_l./mj_l)/2/pi;
+
+disp("Frequencies with mj and kj in modal space")
+vw_modsp_c = [w_c(1,3),w_c(1,4), w_c(1,5)]'; vw_modsp_l = [w_l(1,3), w_l(1,4), w_l(1,5)]';
+disp(num2str([vw_modsp_c, vw_modsp_l]))
 
 %% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
@@ -196,12 +233,16 @@ for i = 1:size(beam.etal,2)
     phi(i,:) = -(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x) + D(i)*(cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x)));
 end
 
-figure(5)
+figure(6)
 plot(beam.x,phi)
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
 
+%%
+% close all
+% plot(x,V_consist(:,3)*0.001,beam.x,phi(1,:))
+%%
 % Time response (q(t))
 
 mj = zeros(1,size(beam.etal,2));
@@ -218,17 +259,15 @@ end
 
 v0 = phi'*q0;                   % Amplitude of the vibration
 
-figure(6)
+figure(7)
 semilogy(f,abs(v0(101,:)))
 title("Response of a continuous free-free beam")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
 disp('Frequencies of the discreete and continous model:')
-vw = [w2,w3,w4]';
-disp(num2str([vw, (sqrt(kj./mj)/2/pi)']))
+vw_cont = [w2,w3,w4]';
+disp(num2str([vw_cont, (sqrt(kj./mj)/2/pi)']))
 
 toc
-
-
 
 
