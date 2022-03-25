@@ -14,10 +14,24 @@ beam.t = 0.004;                                     % Beam's thickness
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
 beam.m = 0.03;                                      % Beam's ,ass
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
+beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
 beam.etal = [4.73 7.853 10.996];                    % Free-Free beam's ηl coeficients
 beam.x = (0:0.001:beam.L);                          % Beam's partition
 c = sqrt(beam.E*beam.Ixx/beam.rho/beam.b/beam.t);   % Constant to be used in continuous model 
 a = 1E-4; b = 1E-4;                                 % Propotional damping coefficient
+
+%% ADITTIVE FABRICATION PARAMETERS
+
+% promt.thetta = 'Angle of impression (º): ';
+% param.angle = input(promt.thetta);                               % Angle in wich the beam is placed in the 3D printer
+% promt.orientation = 'Orientation of the beam (F,V,E): ';
+% param.orientation = input(promt.orientation,"s");                % Orientation of the beam in the printer
+% promt.infill = 'Infill percentage (%): ';
+% param.infill = input(promt.infill);                              % Infill percentage
+% promt.layer = 'Thickness of each layer (m*E-4): ';
+% param.layer = input(promt.layer);                                % Height of each layer
+% promt.pattern = 'Infill pattern (ZZ or T): ';
+% param.pattern = input(promt.pattern,"s");                        % Infill pattern
 
 %% INPUT DATA
 
@@ -30,7 +44,8 @@ p = zeros(DOF,1);
 p(3)= 1;                        % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 800;                        % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
-dof = 4;                        % DOF plotted
+
+dof = 3;                        % DOF plotted
 beam.modes = (1:5);             % Shape mode plotted (ascending order: first 2 are rigid solid and the other 3 are the ones we want)
 
 %% STIFFNESS AND INERTIA BEAM MATRICES
@@ -196,13 +211,21 @@ disp("Frequencies obtained by solving the eigenvalue problem")
 vw_eig_c = [W_c(3,3), W_c(4,4), W_c(5,5)]'; vw_eig_l = [W_l(3,3), W_l(4,4), W_l(5,5)]';   % Starts in 3rd because 1 and 2 are rigid solid modes 
 disp(num2str([vw_eig_c, vw_eig_l]))
 
+x = linspace(0,beam.L,DOF/2);
+
 figure(5)
-plot(V_consist(1:2:DOF,mode))
-title("Mode shapes of with discreet model")
+plot(x,V_consist(1:2:DOF,beam.modes(3:5)))
+set(gca,'YTick',[])
+title("Mode shapes of discreet model with consistent mass matrix")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
-hold on
-plot(V_lumped(1:2:DOF,mode)*275)
-legend("Consistent mass matrix","Lumped mass matrix")
+legend("First Mode", "Second Mode", "Third Mode")
+
+figure(6)
+plot(x,V_lumped(1:2:DOF,beam.modes(3:5)))
+set(gca,'YTick',[])
+title("Mode shapes of discreet model with lumped mass matrix")
+xlabel("X-coordinate [m]"); ylabel("Deformation")
+legend("First Mode", "Second Mode", "Third Mode")
 
 % Compute kj and mj with the discreet model in the modal space
 
@@ -233,8 +256,9 @@ for i = 1:size(beam.etal,2)
     phi(i,:) = -(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x) + D(i)*(cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x)));
 end
 
-figure(6)
+figure(7)
 plot(beam.x,phi)
+set(gca,'YTick',[])
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
@@ -250,16 +274,16 @@ kj = zeros(1,size(beam.etal,2));
 q0 = zeros(size(beam.etal,2),size(f,2));
 
 for i = 1:size(beam.etal,2)
-    mj(i) = beam.rho*beam.b*beam.t*trapz(phi(i,:).^2,2);                     % Equivalent mass
-    kj(i) = beam.E*beam.Ixx*trapz(diff(phi(i,:),2).^2)*1E12;                 % Equivalent stiffness
-    q0(i,:) = p(3)*phi(i,100)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));              % Modal coordinates
+    mj(i) = beam.rho*beam.b*beam.t*trapz(beam.x,phi(i,:).^2,2);                             % Equivalent mass
+    kj(i) = beam.E*beam.Ixx*trapz(beam.x(1:end-2),diff(phi(i,:),2).^2,2)*1E12;              % Equivalent stiffness                 
+    q0(i,:) = p(3)*phi(i,100)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));                             % Modal coordinates
 end
 
 % Beam's transverse vibration (v(x,t) = (ΣФ(x)*q0(Ω))*exp(iΩ*t))
 
 v0 = phi'*q0;                   % Amplitude of the vibration
 
-figure(7)
+figure(8)
 semilogy(f,abs(v0(101,:)))
 title("Response of a continuous free-free beam")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
@@ -268,6 +292,38 @@ disp('Frequencies of the discreete and continous model:')
 vw_cont = [w2,w3,w4]';
 disp(num2str([vw_cont, (sqrt(kj./mj)/2/pi)']))
 
+
+%% SIMULATED TEST
+
+% Input of frequencies obtained in the dynamic test
+
+promt.af = 'First three resonance frequencies (Hz): ';
+beam.rf = input(promt.af);
+promt.rf = 'First three antiresonance frequencies (Hz): ';
+beam.af = input(promt.rf);
+
+% Compute Young's Modulus with 3 different methods
+
+beam.E_iso = E_ISO(beam.L,beam.rhom,beam.Ixx,beam.af);      % ISO-16940
+beam.E_aff = E_AFF(beam.L,beam.rhom,beam.Ixx,beam.af);      % Antiresonances of a free-free beam
+beam.E_rff = E_RFF(beam.L,beam.rhom,beam.Ixx,beam.rf);      % Resonances of a free-free beam
 toc
+
+%% FUNCTIONS
+
+function E_I = E_ISO(L,rhom,Ixx,f)                           % Young's modulus with ISO-6940 method
+    lambda = [1.87510 4.69410 7.85476];
+    E_I = rhom/Ixx*(2*pi*(L/2)^2*f./lambda.^2).^2*1E-9;
+end
+
+function E_A = E_AFF(L,rhom,Ixx,f)                           % Young's modulus with antiresonance frequencies of a free-free beam method
+    lambda = [3.75038 9.39740 15.73438];
+    E_A = rhom/Ixx*(2*pi*L^2*f./lambda.^2).^2*1E-9;
+end
+
+function E_R = E_RFF(L,rhom,Ixx,f)                           % Young's modulus with resonance frequencies of a free-free beam method
+    lambda = [4.73004 10.99561 17.27876];
+    E_R = rhom/Ixx*(2*pi*L^2*f./lambda.^2).^2*1E-9;
+end
 
 

@@ -18,9 +18,20 @@ beam.t = 0.004;                                         % Beam's thickness
 beam.Ixx = beam.b*beam.t^3/12;                          % Beam's area moment of inertia
 beam.m = 0.03;                                          % Beam's mass
 beam.rho = beam.m/beam.L/beam.b/beam.t;                 % Beam's density
+beam.rhom = beam.rho*beam.b*beam.t;                     % Beam's linear mass density
+
 beam.etal = [4.73 7.853 10.996];                        % Free-Free beam's ηl coeficients
 beam.sigma = [0.982502215 1.000777312 0.99996645];      % Sigma coeficients
 beam.x = (0:0.001:beam.L);                              % Beam's partition
+
+promt.af = 'First three resonance frequencies (Hz): ';
+beam.rf = input(promt.af);
+promt.rf = 'First three antiresonance frequencies (Hz): ';
+beam.af = input(promt.rf);
+
+beam.E_iso = E_ISO(beam.L,beam.rhom,beam.Ixx,beam.af);
+beam.E_aff = E_AFF(beam.L,beam.rhom,beam.Ixx,beam.af);
+beam.E_rff = E_RFF(beam.L,beam.rhom,beam.Ixx,beam.rf);
 
 %% IMPUT DATA
 
@@ -34,7 +45,9 @@ p = zeros(DOF,1);               % Input force's amplitudes (each value represent
 p(3)= 1;                        
 F = 800;                        % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
+
 mode = 3;                       % DOF plotted
+beam.modes = (1:5);             % Shape mode plotted (ascending order: first 2 are rigid solid and the other 3 are the ones we want)
 
 c = sqrt(beam.E*beam.Ixx/beam.rho/beam.t/beam.b);       % Constant to be used in continuous model
 
@@ -242,6 +255,56 @@ hold on
 plot(f,angle(Q0_dl))
 legend("Consistent mass matrix", "Lumped mass matrix")
 
+%% MODAL SHAPES OF DISCREET MODEL (Natural frequencies are the eigenvalues of the problem and modal shapes are the eigenvectors)
+
+% With consistent mass matrix
+[V_consist,D_consist] = eig(K,M_consist_2);
+[W_c,order_c] = sort(sum(sqrt(D_consist)./2./pi));                          % Vector of natural frequencies ordered in ascending order
+W_c = diag(W_c);                                                            % Natural frecuencies in a diagonal matrix
+V_consist = V_consist(:,order_c);                                           % Rewrite modal shapes so they match the adcending order of frequencies
+% With lumped mass matrix
+[V_lumped,D_lumped] = eig(K,M_lumped);
+[W_l,order_l] = sort(sum(sqrt(D_lumped)./2./pi,1));                         % Vector of natural frequencies ordered in ascending order
+W_l = diag(W_l);                                                            % Natural frecuencies in a diagonal matrix
+V_lumped = V_lumped(:,order_l);
+
+disp("Frequencies obtained by solving the eigenvalue problem")
+vw_eig_c = [W_c(3,3), W_c(4,4), W_c(5,5)]'; vw_eig_l = [W_l(3,3), W_l(4,4), W_l(5,5)]';   % Starts in 3rd because 1 and 2 are rigid solid modes 
+disp(num2str([vw_eig_c, vw_eig_l]))
+
+x = linspace(0,beam.L,DOF/2);
+
+figure(5)
+plot(x,V_consist(1:2:DOF,beam.modes(3:5)))
+set(gca,'YTick',[])
+title("Mode shapes of discreet model with consistent mass matrix")
+xlabel("X-coordinate [m]"); ylabel("Deformation")
+legend("First Mode", "Second Mode", "Third Mode")
+
+figure(6)
+plot(x,V_lumped(1:2:DOF,beam.modes(3:5)))
+set(gca,'YTick',[])
+title("Mode shapes of discreet model with lumped mass matrix")
+xlabel("X-coordinate [m]"); ylabel("Deformation")
+legend("First Mode", "Second Mode", "Third Mode")
+
+% Compute kj and mj with the discreet model in the modal space
+
+mj_c = sum(V_consist(:,beam.modes)'*M_consist*V_consist(:,beam.modes));
+kj_c = sum(V_consist(:,beam.modes)'*K*V_consist(:,beam.modes));
+
+mj_l = sum(V_lumped(:,beam.modes)'*M_lumped*V_lumped(:,beam.modes));
+kj_l = sum(V_lumped(:,beam.modes)'*K*V_lumped(:,beam.modes));
+
+% Compute ωj with kj and mj
+
+w_c = sqrt(kj_c./mj_c)/2/pi;
+w_l = sqrt(kj_l./mj_l)/2/pi;
+
+disp("Frequencies with mj and kj in modal space")
+vw_modsp_c = [w_c(1,3),w_c(1,4), w_c(1,5)]'; vw_modsp_l = [w_l(1,3), w_l(1,4), w_l(1,5)]';
+disp(num2str([vw_modsp_c, vw_modsp_l]))
+
 %% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
 % Mode shapes (Ф_j)
@@ -256,7 +319,7 @@ for i = 1:size(beam.etal,2)
     phi(i,:) = -(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x) + D(i)*(cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x)));
 end
 
-figure(5)
+figure(7)
 plot(beam.x,phi)
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
@@ -268,7 +331,7 @@ for i = 1:size(beam.etal,2)
     phi(i,:) = -beam.sigma(i)*(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x)) + (cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x));
 end
 
-figure(6)
+figure(8)
 plot(beam.x,phi)
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
@@ -304,12 +367,12 @@ v0 = phi'*q0;                   % Amplitude of the vibration
 v0_ = phi'*q0_;
 
 figure(7)
-semilogy(f,abs(v0(:,:)))
+semilogy(f,abs(abs(v0(:,:))))
 title("Response of a continuous free-free beam using Simpson's rule")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
 figure(8)
-semilogy(f,abs(v0(:,:)))
+semilogy(f,abs(abs(v0(:,:))))
 title("Response of a continuous free-free beam unsing 'trapz' function")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
@@ -327,3 +390,19 @@ end
 function sd_NH = sd_Nh(chi,Je)    % Second derivative of hermitic form functions
     sd_NH = [(chi*3/2) Je*(chi*3-1)/2 -(chi*3/2) Je*(chi*3+1)/2];
 end
+
+function E_I = E_ISO(L,rhom,Ixx,f)                           % Young's modulus with ISO-6940 method
+    lambda = [1.87510 4.69410 7.85476];
+    E_I = rhom/Ixx*(2*pi*(L/2)^2*f./lambda.^2).^2*1E-9;
+end
+
+function E_A = E_AFF(L,rhom,Ixx,f)                           % Young's modulus with antiresonance frequencies of a free-free beam method
+    lambda = [3.75038 9.39740 15.73438];
+    E_A = rhom/Ixx*(2*pi*L^2*f./lambda.^2).^2*1E-9;
+end
+
+function E_R = E_RFF(L,rhom,Ixx,f)                           % Young's modulus with resonance frequencies of a free-free beam method
+    lambda = [4.73004 10.99561 17.27876];
+    E_R = rhom/Ixx*(2*pi*L^2*f./lambda.^2).^2*1E-9;
+end
+
