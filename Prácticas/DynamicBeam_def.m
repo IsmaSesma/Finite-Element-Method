@@ -4,7 +4,6 @@
 
 clc;clear;close all;
 
-tic
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
 beam.E = 2E9;                                       % Elastic modulus
@@ -15,10 +14,10 @@ beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of iner
 beam.m = 0.03;                                      % Beam's ,ass
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
-beam.etal = [4.73 7.853 10.996];                    % Free-Free beam's ηl coeficients
+beam.etal = [4.73 10.996 17.27876];                 % Free-Free beam's ηl coeficients
 beam.x = (0:0.001:beam.L);                          % Beam's partition
 c = sqrt(beam.E*beam.Ixx/beam.rho/beam.b/beam.t);   % Constant to be used in continuous model 
-a = 1E-4; b = 1E-4;                                 % Propotional damping coefficient
+a = 1E-6; b = 1E-6;                                 % Propotional damping coefficient
 
 %% ADITTIVE FABRICATION PARAMETERS
 
@@ -41,12 +40,13 @@ dofn = 2;                       % Degrees of freedom per node (only considering 
 DOF = dofn*nn;                  % Total dof
 
 p = zeros(DOF,1);
-p(3)= 1;                        % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
-F = 800;                        % Maximum frecuency
+p(DOF/2)= 1;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+F = 2000;                       % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 
-dof = 3;                        % DOF plotted
-beam.modes = (1:5);             % Shape mode plotted (ascending order: first 2 are rigid solid and the other 3 are the ones we want)
+dof = DOF/2;                    % DOF plotted
+beam.modes = (1:7);             % Shape mode plotted (ascending order: first 2 are rigid solid modes and the other are the ones we want)
+beam.resonance_i = [3 5 7];     % Index i is where the resonance frequencies are according to the theory
 
 %% STIFFNESS AND INERTIA BEAM MATRICES
 
@@ -57,9 +57,9 @@ connect_e = zeros(ne,2);                % Connectivity matrix of elements throug
 connect_e(:,1) = 1:1:ne;
 connect_e(:,2) = 2:1:nn;
 
-K = zeros(DOF);         % Initilization of the stiffness matrix
-M_consist = zeros(DOF); % Consistent mass matrix
-M_lumped = zeros(DOF);  % Lumped mass matrix
+K = zeros(DOF);                         % Initilization of the stiffness matrix
+M_consist = zeros(DOF);                 % Consistent mass matrix
+M_lumped = zeros(DOF);                  % Lumped mass matrix
 
 for e = 1:ne
     index = connect_e(e,:);                                    
@@ -84,7 +84,10 @@ for e = 1:ne
   % First compute the consistent mass matrix
 
     m_e = beam.rho*beam.b*beam.t*Le;            % Mass of the element          
-    Mce = m_e/420*[156 22*Le 54 -13*Le; 22*Le 4*Le^2 13*Le -3*Le^2; 54 13*Le 156 -22*Le; -13*Le -3*Le^2 -22*Le 4*Le^2];     % Consistent mass matrix of each element
+    Mce = m_e/420*[156 22*Le 54 -13*Le;...      % Consistent mass matrix of each element
+          22*Le 4*Le^2 13*Le -3*Le^2;...
+          54 13*Le 156 -22*Le;...
+          -13*Le -3*Le^2 -22*Le 4*Le^2];     
 
     M_consist(dofe,dofe) = M_consist(dofe,dofe) + Mce;
 
@@ -115,10 +118,10 @@ end
 
 % Natural frecuencies (to be compared with graphics)
 
-w1 = 0;                             % Rigid-body motion
-w2 = 4.730^2*c/beam.L^2/2/pi;
-w3 = 7.853^2*c/beam.L^2/2/pi;
-w4 = 10.996^2*c/beam.L^2/2/pi;
+w1 = 0;                                        % Rigid-body motion
+w2 = beam.etal(1,1)^2*c/beam.L^2/2/pi;
+w3 = beam.etal(1,2)^2*c/beam.L^2/2/pi;
+w4 = beam.etal(1,3)^2*c/beam.L^2/2/pi;
 
 % Squeeze of vectors of amplitude in order to simplify graphics
 
@@ -128,7 +131,6 @@ Q0_l = squeeze(q0_l(dof,:));
 %% FIGURES OF CONSERVATIVE SYSTEM
 
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
-close all
 figure(1)
 semilogy(f,abs(Q0_c))                
 hold on
@@ -136,6 +138,15 @@ semilogy(f,abs(Q0_l))
 title("Amplitude Bode Diagram of Conservative System","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]")
+
+% Find the resonance and antiresonance frequencies
+[peaks.rcons_c,locs_rc] = findpeaks(abs(Q0_c));
+[peaks.rcons_l,locs_rl] = findpeaks(abs(Q0_l));
+text(locs_rl+.02,peaks.rcons_l,num2str((1:numel(peaks.rcons_l))'))
+
+[peaks.acons_c,locs_ac] = findpeaks(abs(1./Q0_c));
+[peaks.acons_l,locs_al] = findpeaks(abs(1./Q0_l));
+
 
 % Plots Angular offset vs Frecuency 
 figure(2)
@@ -145,6 +156,8 @@ plot(f,unwrap(angle(Q0_l)))
 title("Angular offset Bode Diagram of Conservative System","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
+
+fprintf('Conservative system finished\n');
 
 %% PROPORTIONAL DAMPING MODEL ([F] = α[M] + β[K])
 
@@ -161,7 +174,7 @@ q_dc = zeros(DOF,F); q_dl = zeros(DOF,F);
 
 for i = 1:F           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
 
-    D_dc(:,:,i) = (K - (2*pi*i)^2*M_consist + 1i*(2*pi*i)*F_c);         % Dynamic stiffness matrix with consistent mass matrix
+    D_dc(:,:,i) = (K - (2*pi*i)^2*M_consist + 1i*(2*pi*i)*F_c);           % Dynamic stiffness matrix with consistent mass matrix
     q0_dc(:,i) = D_dc(:,:,i)\p;                                           % Displacement's amplitudes with consistent mass matrix
 
     D_dl(:,:,i) = (K - (2*pi*i)^2*M_lumped + 1i*(2*pi*i)*F_c);            % Dynamic stiffness matrix with lumped mass matrix
@@ -184,6 +197,15 @@ xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]");
 hold on
 semilogy(f,abs(Q0_dl))                       
 legend("Consistent mass matrix", "Lumped mass matrix")
+
+% Find the resonance and antiresonance frequencies
+[peaks.rnocons_c,locs_nocons_rc] = findpeaks(abs(Q0_dc));
+[peaks.rnocons_l,locs_nocons_rl] = findpeaks(abs(Q0_dl));
+text(locs_nocons_rl+.02,peaks.rnocons_l,num2str((1:numel(peaks.rnocons_l))'))
+
+[peaks.acons_l,locs_nocons_ac] = findpeaks(abs(Q0_l));
+[peaks.acons_l,locs_nocons_al] = findpeaks(abs(Q0_l));
+
  
 % Plots Angular offset vs Frecuency 
 figure(4)
@@ -193,6 +215,8 @@ xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
 hold on
 plot(f,angle(Q0_dl))
 legend("Consistent mass matrix", "Lumped mass matrix")
+
+fprintf('Non-Conservative system finished\n');
 
 %% MODAL SHAPES OF DISCREET MODEL (Natural frequencies are the eigenvalues of the problem and modal shapes are the eigenvectors)
 
@@ -208,13 +232,21 @@ W_l = diag(W_l);                                                            % Na
 V_lumped = V_lumped(:,order_l);
 
 disp("Frequencies obtained by solving the eigenvalue problem")
-vw_eig_c = [W_c(3,3), W_c(4,4), W_c(5,5)]'; vw_eig_l = [W_l(3,3), W_l(4,4), W_l(5,5)]';   % Starts in 3rd because 1 and 2 are rigid solid modes 
+
+vw_eig_c = [W_c(beam.resonance_i(:,1),beam.resonance_i(:,1)),...
+            W_c(beam.resonance_i(:,2),beam.resonance_i(:,2)),...
+            W_c(beam.resonance_i(:,3),beam.resonance_i(:,3))]';
+
+vw_eig_l = [W_l(beam.resonance_i(:,1),beam.resonance_i(:,1)),...
+            W_l(beam.resonance_i(:,2),beam.resonance_i(:,2)),...
+            W_l(beam.resonance_i(:,3),beam.resonance_i(:,3))]';             % Starts in 3rd because 1 and 2 are rigid solid modes 
+
 disp(num2str([vw_eig_c, vw_eig_l]))
 
 x = linspace(0,beam.L,DOF/2);
 
 figure(5)
-plot(x,V_consist(1:2:DOF,beam.modes(3:5)))
+plot(x,V_consist(1:2:DOF,beam.modes(1,:)))
 set(gca,'YTick',[])
 title("Mode shapes of discreet model with consistent mass matrix")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
@@ -241,8 +273,18 @@ w_c = sqrt(kj_c./mj_c)/2/pi;
 w_l = sqrt(kj_l./mj_l)/2/pi;
 
 disp("Frequencies with mj and kj in modal space")
-vw_modsp_c = [w_c(1,3),w_c(1,4), w_c(1,5)]'; vw_modsp_l = [w_l(1,3), w_l(1,4), w_l(1,5)]';
+
+vw_modsp_c = [w_c(:,beam.resonance_i(:,1)),...              % The frequencies asociated are in the positions 3, 5 and 7
+              w_c(:,beam.resonance_i(:,2)),...
+              w_c(:,beam.resonance_i(:,3))]';
+
+vw_modsp_l = [w_l(:,beam.resonance_i(:,1)),...
+              w_l(:,beam.resonance_i(:,2)),...
+              w_l(:,beam.resonance_i(:,3))]';
+
 disp(num2str([vw_modsp_c, vw_modsp_l]))
+
+fprintf('Modal shapes of the discreet model finished\n');
 
 %% CONTINUOUS MODEL (Theory of vibration vol II (4.3), Shabana)
 
@@ -263,10 +305,6 @@ title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
 
-%%
-% close all
-% plot(x,V_consist(:,3)*0.001,beam.x,phi(1,:))
-%%
 % Time response (q(t))
 
 mj = zeros(1,size(beam.etal,2));
@@ -276,7 +314,7 @@ q0 = zeros(size(beam.etal,2),size(f,2));
 for i = 1:size(beam.etal,2)
     mj(i) = beam.rho*beam.b*beam.t*trapz(beam.x,phi(i,:).^2,2);                             % Equivalent mass
     kj(i) = beam.E*beam.Ixx*trapz(beam.x(1:end-2),diff(phi(i,:),2).^2,2)*1E12;              % Equivalent stiffness                 
-    q0(i,:) = p(3)*phi(i,100)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));                             % Modal coordinates
+    q0(i,:) = p(DOF/2)*phi(i,101)./(-mj(i)*(2*pi*f(:)).^2 + kj(i));                         % Modal coordinates
 end
 
 % Beam's transverse vibration (v(x,t) = (ΣФ(x)*q0(Ω))*exp(iΩ*t))
@@ -288,26 +326,37 @@ semilogy(f,abs(v0(101,:)))
 title("Response of a continuous free-free beam")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
+% Find the resonance and antiresonance frequencies
+[peaks.rcont,locsr_cont] = findpeaks(abs(v0(101,:)));
+[peaks.acont,locsa_cont] = findpeaks(abs(1./v0(101,:)));
+
 disp('Frequencies of the discreete and continous model:')
 vw_cont = [w2,w3,w4]';
 disp(num2str([vw_cont, (sqrt(kj./mj)/2/pi)']))
 
+fprintf('Continuous model finished\n');
 
 %% SIMULATED TEST
 
-% Input of frequencies obtained in the dynamic test
+promt.ask = 'Want to realize a simulated test? (1/0) ';
+answer = input(promt.ask);
 
-promt.af = 'First three resonance frequencies (Hz): ';
-beam.rf = input(promt.af);
-promt.rf = 'First three antiresonance frequencies (Hz): ';
-beam.af = input(promt.rf);
+if answer == 1
+    % Input of frequencies obtained in the dynamic test
+    promt.af = 'First three resonance frequencies (Hz): ';
+    beam.rf = input(promt.af);
+    promt.rf = 'First three antiresonance frequencies (Hz): ';
+    beam.af = input(promt.rf);
 
-% Compute Young's Modulus with 3 different methods
+    % Compute Young's Modulus with 3 different methods
 
-beam.E_iso = E_ISO(beam.L,beam.rhom,beam.Ixx,beam.af);      % ISO-16940
-beam.E_aff = E_AFF(beam.L,beam.rhom,beam.Ixx,beam.af);      % Antiresonances of a free-free beam
-beam.E_rff = E_RFF(beam.L,beam.rhom,beam.Ixx,beam.rf);      % Resonances of a free-free beam
-toc
+    beam.E_iso = E_ISO(beam.L,beam.rhom,beam.Ixx,beam.af);      % ISO-16940
+    beam.E_aff = E_AFF(beam.L,beam.rhom,beam.Ixx,beam.af);      % Antiresonances of a free-free beam
+    beam.E_rff = E_RFF(beam.L,beam.rhom,beam.Ixx,beam.rf);      % Resonances of a free-free beam
+else
+    fprintf('Program ended. No simulated test conducted')
+end
+
 
 %% FUNCTIONS
 
@@ -325,5 +374,3 @@ function E_R = E_RFF(L,rhom,Ixx,f)                           % Young's modulus w
     lambda = [4.73004 10.99561 17.27876];
     E_R = rhom/Ixx*(2*pi*L^2*f./lambda.^2).^2*1E-9;
 end
-
-

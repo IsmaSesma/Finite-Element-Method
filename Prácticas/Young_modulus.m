@@ -61,5 +61,9 @@ E_RFF_std = std(E_RFF);                                                         
 disp("Young's Modulus with ISO-16940, Antiresonances of FF Beam and Resonances of FF Beam (GPa)")
 disp(num2str([E_ISO', E_AFF', E_RFF']))
 
+%%
+
+
+
 toc
 
