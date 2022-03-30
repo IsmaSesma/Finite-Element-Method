@@ -1,36 +1,24 @@
 % *************************************************************
-%            FEM DYNAMIC ANALYSIS OF 1D FREE-FREE BEAM 
+%           FEM DYNAMIC ANALYSIS OF 1D FREE-FREE BEAM 
 % *************************************************************
 
 clc;clear;close all;
 
+%% TESTING DATA
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
 beam.E = 2E9;                                       % Elastic modulus
 beam.L = 0.2;                                       % Beam's length
 beam.b = 0.02;                                      % Beam's width
 beam.t = 0.004;                                     % Beam's thickness
+beam.m = 0.03;                                      % Beam's mass
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
-beam.m = 0.03;                                      % Beam's ,ass
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
 beam.etal = [4.73 10.996 17.27876];                 % Free-Free beam's ηl coeficients
 beam.x = (0:0.001:beam.L);                          % Beam's partition
 c = sqrt(beam.E*beam.Ixx/beam.rho/beam.b/beam.t);   % Constant to be used in continuous model 
 a = 1E-6; b = 1E-6;                                 % Propotional damping coefficient
-
-%% ADITTIVE FABRICATION PARAMETERS
-
-% promt.thetta = 'Angle of impression (º): ';
-% param.angle = input(promt.thetta);                               % Angle in wich the beam is placed in the 3D printer
-% promt.orientation = 'Orientation of the beam (F,V,E): ';
-% param.orientation = input(promt.orientation,"s");                % Orientation of the beam in the printer
-% promt.infill = 'Infill percentage (%): ';
-% param.infill = input(promt.infill);                              % Infill percentage
-% promt.layer = 'Thickness of each layer (m*E-4): ';
-% param.layer = input(promt.layer);                                % Height of each layer
-% promt.pattern = 'Infill pattern (ZZ or T): ';
-% param.pattern = input(promt.pattern,"s");                        % Infill pattern
 
 %% INPUT DATA
 
@@ -44,7 +32,6 @@ p(DOF/2)= 1;                    % Input force's amplitudes (each value represent
 F = 2000;                       % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 
-dof = DOF/2;                    % DOF plotted
 beam.modes = (1:7);             % Shape mode plotted (ascending order: first 2 are rigid solid modes and the other are the ones we want)
 beam.resonance_i = [3 5 7];     % Index i is where the resonance frequencies are according to the theory
 
@@ -125,8 +112,8 @@ w4 = beam.etal(1,3)^2*c/beam.L^2/2/pi;
 
 % Squeeze of vectors of amplitude in order to simplify graphics
 
-Q0_c = squeeze(q0_c(dof,:));
-Q0_l = squeeze(q0_l(dof,:));
+Q0_c = squeeze(q0_c(DOF/2,:));
+Q0_l = squeeze(q0_l(DOF/2,:));
 
 %% FIGURES OF CONSERVATIVE SYSTEM
 
@@ -146,7 +133,6 @@ text(locs_rl+.02,peaks.rcons_l,num2str((1:numel(peaks.rcons_l))'))
 
 [peaks.acons_c,locs_ac] = findpeaks(abs(1./Q0_c));
 [peaks.acons_l,locs_al] = findpeaks(abs(1./Q0_l));
-
 
 % Plots Angular offset vs Frecuency 
 figure(2)
@@ -184,8 +170,8 @@ end
 
 % Squeeze of vectors of amplitude in order to simplify graphics
 
-Q0_dc = squeeze(q0_dc(dof,:));
-Q0_dl = squeeze(q0_dl(dof,:));
+Q0_dc = squeeze(q0_dc(DOF/2,:));
+Q0_dl = squeeze(q0_dl(DOF/2,:));
 
 %% FIGURES OF NON-CONSERVATIVE SYSTEM
 
@@ -203,10 +189,12 @@ legend("Consistent mass matrix", "Lumped mass matrix")
 [peaks.rnocons_l,locs_nocons_rl] = findpeaks(abs(Q0_dl));
 text(locs_nocons_rl+.02,peaks.rnocons_l,num2str((1:numel(peaks.rnocons_l))'))
 
-[peaks.acons_l,locs_nocons_ac] = findpeaks(abs(Q0_l));
-[peaks.acons_l,locs_nocons_al] = findpeaks(abs(Q0_l));
+[peaks.acons_l,locs_nocons_ac] = findpeaks(abs(1./Q0_dc));
+[peaks.acons_l,locs_nocons_al] = findpeaks(abs(1./Q0_dl));
 
- 
+%disp("Antiresonance frequencies obteained with the Bode diagram")
+
+
 % Plots Angular offset vs Frecuency 
 figure(4)
 plot(f,angle(Q0_dc))                  
@@ -223,12 +211,12 @@ fprintf('Non-Conservative system finished\n');
 % With consistent mass matrix
 [V_consist,D_consist] = eig(K,M_consist);
 [W_c,order_c] = sort(sum(sqrt(D_consist)./2./pi));                          % Vector of natural frequencies ordered in ascending order
-W_c = diag(W_c);                                                            % Natural frecuencies in a diagonal matrix
+W_c = diag(W_c);                                                            % Natural frequencies in a diagonal matrix
 V_consist = V_consist(:,order_c);                                           % Rewrite modal shapes so they match the adcending order of frequencies
 % With lumped mass matrix
 [V_lumped,D_lumped] = eig(K,M_lumped);
 [W_l,order_l] = sort(sum(sqrt(D_lumped)./2./pi,1));                         % Vector of natural frequencies ordered in ascending order
-W_l = diag(W_l);                                                            % Natural frecuencies in a diagonal matrix
+W_l = diag(W_l);                                                            % Natural frequencies in a diagonal matrix
 V_lumped = V_lumped(:,order_l);
 
 disp("Frequencies obtained by solving the eigenvalue problem")
@@ -243,10 +231,13 @@ vw_eig_l = [W_l(beam.resonance_i(:,1),beam.resonance_i(:,1)),...
 
 disp(num2str([vw_eig_c, vw_eig_l]))
 
+disp("Antiresonance frequencies obtained through the graphics")
+disp(num2str(locs_ac'))
+
 x = linspace(0,beam.L,DOF/2);
 
 figure(5)
-plot(x,V_consist(1:2:DOF,beam.modes(1,:)))
+plot(x,V_consist(1:2:DOF,beam.modes(:)))
 set(gca,'YTick',[])
 title("Mode shapes of discreet model with consistent mass matrix")
 xlabel("X-coordinate [m]"); ylabel("Deformation")

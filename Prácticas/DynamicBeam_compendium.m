@@ -20,7 +20,7 @@ beam.m = 0.03;                                          % Beam's mass
 beam.rho = beam.m/beam.L/beam.b/beam.t;                 % Beam's density
 beam.rhom = beam.rho*beam.b*beam.t;                     % Beam's linear mass density
 
-beam.etal = [4.73 7.853 10.996];                        % Free-Free beam's ηl coeficients
+beam.etal = [4.73 10.996 17.27876];                     % Free-Free beam's ηl coeficients
 beam.sigma = [0.982502215 1.000777312 0.99996645];      % Sigma coeficients
 beam.x = (0:0.001:beam.L);                              % Beam's partition
 
@@ -35,7 +35,6 @@ beam.E_rff = E_RFF(beam.L,beam.rhom,beam.Ixx,beam.rf);
 
 %% IMPUT DATA
 
-
 ne = 20;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
@@ -43,7 +42,7 @@ DOF = dofn*nn;                  % Total dof
 
 p = zeros(DOF,1);               % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 p(3)= 1;                        
-F = 800;                        % Maximum frecuency
+F = 2000;                       % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 
 mode = 3;                       % DOF plotted
