@@ -3,6 +3,7 @@
 % *************************************************************
 
 clc;clear;close all;
+set(0,'DefaultFigureVisible','on')
 
 %% TESTING DATA
 %% MASIC AND GEOMETRIC DATA (all in ISU)
@@ -118,13 +119,14 @@ Q0_l = squeeze(q0_l(DOF/2,:));
 %% FIGURES OF CONSERVATIVE SYSTEM
 
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
-figure(1)
+fig1 = figure;
 semilogy(f,abs(Q0_c))                
 hold on
 semilogy(f,abs(Q0_l))      
 title("Amplitude Bode Diagram of Conservative System","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]")
+savefig(fig1,'fig1.fig')
 
 % Find the resonance and antiresonance frequencies
 [peaks.rcons_c,locs_rc] = findpeaks(abs(Q0_c));
@@ -135,13 +137,14 @@ text(locs_rl+.02,peaks.rcons_l,num2str((1:numel(peaks.rcons_l))'))
 [peaks.acons_l,locs_al] = findpeaks(abs(1./Q0_l));
 
 % Plots Angular offset vs Frecuency 
-figure(2)
+fig2 = figure;
 plot(f,unwrap(angle(Q0_c)))                  
 hold on
 plot(f,unwrap(angle(Q0_l)))
 title("Angular offset Bode Diagram of Conservative System","FontSize",12)
 legend("Consistent mass matrix", "Lumped mass matrix")
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
+savefig(fig2,'fig2.fig')
 
 fprintf('Conservative system finished\n');
 
@@ -176,13 +179,14 @@ Q0_dl = squeeze(q0_dl(DOF/2,:));
 %% FIGURES OF NON-CONSERVATIVE SYSTEM
 
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
-figure(3)
+fig3 = figure;
 semilogy(f,abs(Q0_dc))                
 title("Amplitude Bode Diagram of Non-Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]");
 hold on
 semilogy(f,abs(Q0_dl))                       
 legend("Consistent mass matrix", "Lumped mass matrix")
+savefig(fig3,'fig3.fig')
 
 % Find the resonance and antiresonance frequencies
 [peaks.rnocons_c,locs_nocons_rc] = findpeaks(abs(Q0_dc));
@@ -196,13 +200,14 @@ text(locs_nocons_rl+.02,peaks.rnocons_l,num2str((1:numel(peaks.rnocons_l))'))
 
 
 % Plots Angular offset vs Frecuency 
-figure(4)
+fig4 = figure;
 plot(f,angle(Q0_dc))                  
 title("Angular offset Bode Diagram of Non-Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]");
 hold on
 plot(f,angle(Q0_dl))
 legend("Consistent mass matrix", "Lumped mass matrix")
+savefig(fig4,'fig4.fig')
 
 fprintf('Non-Conservative system finished\n');
 
@@ -234,21 +239,23 @@ disp(num2str([vw_eig_c, vw_eig_l]))
 disp("Antiresonance frequencies obtained through the graphics")
 disp(num2str(locs_ac'))
 
-x = linspace(0,beam.L,DOF/2);
+x_axis = linspace(0,beam.L,DOF/2);
 
-figure(5)
-plot(x,V_consist(1:2:DOF,beam.modes(:)))
+fig5 = figure;
+plot(x_axis,V_consist(1:2:DOF,beam.modes(:)))
 set(gca,'YTick',[])
 title("Mode shapes of discreet model with consistent mass matrix")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
 legend("First Mode", "Second Mode", "Third Mode")
+savefig(fig5,'fig5.fig')
 
-figure(6)
-plot(x,V_lumped(1:2:DOF,beam.modes(3:5)))
+fig6 = figure;
+plot(x_axis,V_lumped(1:2:DOF,beam.modes(3:5)))
 set(gca,'YTick',[])
 title("Mode shapes of discreet model with lumped mass matrix")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
 legend("First Mode", "Second Mode", "Third Mode")
+savefig(fig6,'fig6.fig')
 
 % Compute kj and mj with the discreet model in the modal space
 
@@ -289,12 +296,13 @@ for i = 1:size(beam.etal,2)
     phi(i,:) = -(sinh(beam.etal(i)/beam.L*beam.x) + sin(beam.etal(i)/beam.L*beam.x) + D(i)*(cosh(beam.etal(i)/beam.L*beam.x) + cos(beam.etal(i)/beam.L*beam.x)));
 end
 
-figure(7)
+fig7 = figure;
 plot(beam.x,phi)
 set(gca,'YTick',[])
 title("First three mode shapes of a beam with free free ends")
 legend("First mode", "Second mode", "Third mode")
 xlabel("X-coordinate [m]"); ylabel("Deformation")
+savefig(fig7,'fig7.fig')
 
 % Time response (q(t))
 
@@ -312,10 +320,11 @@ end
 
 v0 = phi'*q0;                   % Amplitude of the vibration
 
-figure(8)
+fig8 = figure;
 semilogy(f,abs(v0(101,:)))
 title("Response of a continuous free-free beam")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
+savefig(fig8,'fig8.fig')
 
 % Find the resonance and antiresonance frequencies
 [peaks.rcont,locsr_cont] = findpeaks(abs(v0(101,:)));
@@ -345,9 +354,21 @@ if answer == 1
     beam.E_aff = E_AFF(beam.L,beam.rhom,beam.Ixx,beam.af);      % Antiresonances of a free-free beam
     beam.E_rff = E_RFF(beam.L,beam.rhom,beam.Ixx,beam.rf);      % Resonances of a free-free beam
 else
-    fprintf('Program ended. No simulated test conducted')
+    fprintf('No simulated test conducted\n')
 end
 
+%% EXPORT PLOTS AS .TXT DATA FILES
+
+h = openfig('fig8.fig');
+h = findobj(gca,'Type','line');
+x = get (h,'Xdata');
+y = get(h,'Ydata');
+
+A = [];
+A(:,1) = x;
+A(:,2) = y;
+
+writematrix(A,'F90001ZZa.txt','Delimiter',',')
 
 %% FUNCTIONS
 
