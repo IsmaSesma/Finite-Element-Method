@@ -28,6 +28,8 @@ test.seed{4} = {'1','2','3','4'};                                   % Layer thic
 test.seed{5} = {'ZZ','T'};                                          % Infill pattern (Zig-Zag, Triangular)   
 test.seed{6} = {'a','b','c'};                                       % Sets of the same beam (3 models of each one)
 
+casestoread = {'F90001ZZa'};                  % Specify the files that are going to be read here
+
 % Generate all possible combinations of beams
 
 cont = 1;
@@ -46,24 +48,38 @@ for i=1:length(test.seed{1})
     end
 end
 
-for s=1:length(test.name)
-    test.(test.name{s}).fr = 200*rand(1,3);
+for s=1:length(casestoread)
+    filecontent = importdata([casestoread{s} '.txt'],',');
+    test.(casestoread{s}).freq = filecontent(:,1);
+    test.(casestoread{s}).amp = filecontent(:,2);
+    test.(casestoread{s}).headers = filecontent;
+
+    [test.(casestoread{s}).peak, test.(casestoread{s}).rf] = findpeaks(test.(casestoread{s}).amp);          % Find the resonance frequencies
+    [test.(casestoread{s}).min, test.(casestoread{s}).af] = findpeaks(-test.(casestoread{s}).amp);          % Find the antiresonance frequencies
+
+    test.(casestoread{s}).E_iso = E_ISO(beam.L,beam.rhom,beam.Ixx,test.(casestoread{s}).af);
+    test.(casestoread{s}).E_af = E_AFF(beam.L,beam.rhom,beam.Ixx,test.(casestoread{s}).af);
+    test.(casestoread{s}).E_rf = E_RFF(beam.L,beam.rhom,beam.Ixx,test.(casestoread{s}).rf);
+
 end
 
-for s=1:216
-    filecontent = importdata([test.name{s} '.txt'],'\t',3);
-    test.(test.name{s}).t = filecontent.data(:,1);
-    test.(test.name{s}).Amp = filecontent.data(:,2);
-    test.(test.name{s}).names = filecontent.colheaders;
-end
 
-figure('Color','White')
-hold on
-leg = '';
-for s=1:2
-    plot(test.(test.name{s}).t,test.(test.name{s}).Amp)
-    leg{s} = test.name{s};
-end
+% for s=1:2
+%     filecontent = importdata([test.name{s} '.txt'],'\t',3);
+%     test.(test.name{s}).t = filecontent.data(:,1);
+%     test.(test.name{s}).Amp = filecontent.data(:,2);
+%     test.(test.name{s}).names = filecontent.colheaders;
+% end
+
+
+
+% figure('Color','White')
+% hold on
+% leg = '';
+% for s=1:2
+%     plot(test.(test.name{s}).t,test.(test.name{s}).Amp)
+%     leg{s} = test.name{s};
+% end
 
 %% FUNCTIONS
 
