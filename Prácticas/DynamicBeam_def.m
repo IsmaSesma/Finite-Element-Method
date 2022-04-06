@@ -5,7 +5,6 @@
 clc;clear;close all;
 set(0,'DefaultFigureVisible','on')
 
-%% TESTING DATA
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
 beam.E = 2E9;                                       % Elastic modulus

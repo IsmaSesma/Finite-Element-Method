@@ -57,9 +57,9 @@ for s=1:length(casestoread)
     [test.(casestoread{s}).peak, test.(casestoread{s}).rf] = findpeaks(test.(casestoread{s}).amp);          % Find the resonance frequencies
     [test.(casestoread{s}).min, test.(casestoread{s}).af] = findpeaks(-test.(casestoread{s}).amp);          % Find the antiresonance frequencies
 
-    test.(casestoread{s}).E_iso = E_ISO(beam.L,beam.rhom,beam.Ixx,test.(casestoread{s}).af);
-    test.(casestoread{s}).E_af = E_AFF(beam.L,beam.rhom,beam.Ixx,test.(casestoread{s}).af);
-    test.(casestoread{s}).E_rf = E_RFF(beam.L,beam.rhom,beam.Ixx,test.(casestoread{s}).rf);
+    test.(casestoread{s}).E_iso = E_ISO(beam.L(s),beam.rhom(s),beam.Ixx(s),test.(casestoread{s}).af);
+    test.(casestoread{s}).E_af = E_AFF(beam.L(s),beam.rhom(s),beam.Ixx(s),test.(casestoread{s}).af);
+    test.(casestoread{s}).E_rf = E_RFF(beam.L(s),beam.rhom(s),beam.Ixx(s),test.(casestoread{s}).rf);
 
 end
 
@@ -83,7 +83,7 @@ end
 
 %% FUNCTIONS
 
-function E_I = E_ISO(L,rhom,Ixx,f)                           % Young's modulus with ISO-6940 method
+function E_I = E_ISO(L,rhom,Ixx,f)                           % Young's modulus with ISO-16940 method
     lambda = [1.87510 4.69410 7.85476];
     E_I = rhom/Ixx*(2*pi*(L/2)^2*f./lambda.^2).^2*1E-9;
 end
