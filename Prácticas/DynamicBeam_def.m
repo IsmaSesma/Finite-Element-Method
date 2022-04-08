@@ -165,7 +165,7 @@ for i = 1:F           % This loop makes a sweep in the frecuencies up to the max
     D_dc(:,:,i) = (K - (2*pi*i)^2*M_consist + 1i*(2*pi*i)*F_c);           % Dynamic stiffness matrix with consistent mass matrix
     q0_dc(:,i) = D_dc(:,:,i)\p;                                           % Displacement's amplitudes with consistent mass matrix
 
-    D_dl(:,:,i) = (K - (2*pi*i)^2*M_lumped + 1i*(2*pi*i)*F_c);            % Dynamic stiffness matrix with lumped mass matrix
+    D_dl(:,:,i) = (K - (2*pi*i)^2*M_lumped + 1i*(2*pi*i)*F_l);            % Dynamic stiffness matrix with lumped mass matrix
     q0_dl(:,i) = D_dl(:,:,i)\p;                                           % Displacement's amplitudes with lumped mass matrix
 
 end
