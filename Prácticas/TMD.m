@@ -10,13 +10,13 @@ beam.E = 2E9;                                       % Elastic modulus
 beam.L = 0.2;                                       % Beam's length
 beam.b = 0.02;                                      % Beam's width
 beam.t = 0.004;                                     % Beam's thickness
-beam.tl = 0.02;                                     % Thickness of the last element of the beam      
+beam.tl = 0.2;                                     % Thickness of the last element of the beam      
 beam.m = 0.03;                                      % Beam's mass
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
 beam.x = (0:0.001:beam.L);                          % Beam's partition 
-a = 1E-6; b = 1E-6;                                 % Propotional damping coefficient
+a = 1E-6; b = 1E-6;                                 % Proportional damping coefficient
 
 %% INPUT DATA
 
@@ -58,13 +58,13 @@ for e = 1:ne
     dofe = [index(1)*dofn-1 index(1)*dofn...                    % DOF of each element
             index(2)*dofn-1 index(2)*dofn];
             
-%     if e == ne                                                  % Changes the thickness of the beam in order to simulate a TMD
-%         beam.t = beam.tl;
-%         beam.Ixx = beam.b*beam.t^3/12;
-%         beam.rho = beam.m/beam.L/beam.b/beam.t;
-%     else
-%         beam.t = beam.t;
-%     end
+    if e == ne                                                  % Changes the thickness of the beam in order to simulate a TMD
+        beam.t = beam.tl;
+        beam.Ixx = beam.b*beam.t^3/12;
+        beam.rho = beam.m/beam.L/beam.b/beam.t;
+    else
+        beam.t = beam.t;
+    end
 
 % STIFFNESS
      

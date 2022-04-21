@@ -33,9 +33,9 @@ beam.E_iso = E_ISO(beam.L,beam.rhom,beam.Ixx,beam.af);
 beam.E_aff = E_AFF(beam.L,beam.rhom,beam.Ixx,beam.af);
 beam.E_rff = E_RFF(beam.L,beam.rhom,beam.Ixx,beam.rf);
 
-%% IMPUT DATA
+%% INPUT DATA
 
-ne = 20;                         % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+ne = 20;                        % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof
