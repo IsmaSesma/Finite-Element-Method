@@ -29,9 +29,7 @@ test.seed{4} = {'1','2','3','4'};                                   % Layer thic
 test.seed{5} = {'ZZ','T'};                                          % Infill pattern (Zig-Zag, Triangular)   
 test.seed{6} = {'a','b','c'};                                       % Sets of the same beam (3 models of each one)
 
-casestoread = {'E99001ZZa','E90451ZZa','E85001ZZa','E70001Ta','E60001Ta','E50001Ta','E40001Ta','E99002ZZa','E99003ZZa','E99004ZZa',...
-               'E99001ZZb','E90451ZZb','E85001ZZb','E70001Tb','E60001Tb','E50001Tb','E99002ZZb','E99003ZZb','E99004ZZb',...
-               'E99001ZZc','E90451ZZc','E85001ZZc','E70001Tc','E60001Tc','E50001Tc','E99002ZZc','E99003ZZc','E99004ZZc'};    % Specify the files that are going to be read here
+casestoread = {'E40001Ta','E99002ZZa','E99003ZZa','E99004ZZa'};                  % Specify the files that are going to be read here
 
 % Generate all possible combinations of beams
 
@@ -58,33 +56,33 @@ for s=1:length(casestoread)
     test.(casestoread{s}).imag = filecontent(:,3);
     
     test.(casestoread{s}).amp = sqrt(filecontent(:,2).^2 + filecontent(:,3).^2);
-    
-    % MCM 2022-04-25
-    [test.(casestoread{s}).peak, test.(casestoread{s}).rf] = findpeaks(test.(casestoread{s}).amp,test.(casestoread{s}).freq,'MinPeakProminence',50,'NPeaks',3);          % Find the resonance frequencies
-    tolook_f = test.(casestoread{s}).freq(10:end);
-    tolook_v = 1./test.(casestoread{s}).amp(10:end);
-    [test.(casestoread{s}).min, test.(casestoread{s}).af] = findpeaks(tolook_v,tolook_f,'MinPeakProminence',0.065,'NPeaks',3);          % Find the antiresonance frequencies
-    test.(casestoread{s}).min = 1./test.(casestoread{s}).min;
-    % ----
+   
 
-    test.(casestoread{s}).E_iso = (E_ISO(beam.L(s),beam.rhom(s),beam.Ixx(s),test.(casestoread{s}).af));
+    [test.(casestoread{s}).peak, test.(casestoread{s}).rf] = findpeaks(test.(casestoread{s}).amp,'MinPeakProminence',50,'NPeaks',3);          % Find the resonance frequencies
+    [test.(casestoread{s}).min, test.(casestoread{s}).af] = findpeaks(-test.(casestoread{s}).amp,'MinPeakProminence',40,'NPeaks',3);          % Find the antiresonance frequencies
+
+    test.(casestoread{s}).E_iso = diag(E_ISO(beam.L(s),beam.rhom(s),beam.Ixx(s),test.(casestoread{s}).af));
     test.(casestoread{s}).E_af = diag(E_AFF(beam.L(s),beam.rhom(s),beam.Ixx(s),test.(casestoread{s}).af));
     test.(casestoread{s}).E_rf = diag(E_RFF(beam.L(s),beam.rhom(s),beam.Ixx(s),test.(casestoread{s}).rf));
 
 end
 
-%%
-% MCM 2022-04-25
-figure()
-tiledlayout(6,4)
-for t=1:28
-    nexttile
-    hold on
-    plot(test.(casestoread{t}).freq,test.(casestoread{t}).amp)
-    plot(test.(casestoread{t}).rf,test.(casestoread{t}).peak,'ro')
-    plot(test.(casestoread{t}).af,test.(casestoread{t}).min,'bo')
+tiledlayout(2,2)
+nexttile
+plot(test.(casestoread{1}).amp)
+title(casestoread{1})
 
-end
+nexttile
+plot(test.(casestoread{2}).amp)
+title(casestoread{2})
+
+nexttile
+plot(test.(casestoread{3}).amp)
+title(casestoread{3})
+
+nexttile
+plot(test.(casestoread{4}).amp)
+title(casestoread{4})
 
 %% FUNCTIONS
 
