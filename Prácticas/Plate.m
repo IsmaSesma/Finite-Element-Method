@@ -33,8 +33,10 @@ surf(X,Y,Z)
 connect = 1:1:nn;                             % Connectivity matrix of the elements through the nodes
 connect_e = reshape(connect,[4,4])';
 
-for e = 1:ne
+K = zeros(nn*dofn);
 
+for e = 1:ne
+    index = 
 end
 
 %% FUNCTIONS
