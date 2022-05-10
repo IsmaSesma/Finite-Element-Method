@@ -2,38 +2,28 @@
 %           FEM MODEL OF A PLATE USING RECTANGULAR ELEMENTS 
 % ***********************************************************************
 
-% clc;clear;close all;
+clc;clear;close all;
 
 %% MASIC AND GEOMETRIC DATA
 
-plate.E = 70E9; plate.nu = 0.3;
+plate.E = 10920; plate.nu = 0.3;
 plate.a = 1; plate.b = 1;                % Plate's dimensions
 plate.t = 0.1;                              % Plate's thickness
 plate.m = 0.5;                               % Plate's mass
-plate.rho = plate.m
 plate.I = plate.t^3/12;                   % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
 
 %% INPUT DATA
 
-ne_s = 100;                    % Number of bidimensional elements per side of the plate
+ne_s = 20;                    % Number of bidimensional elements per side of the plate
 nne = 4;                      % Number of nodes per element
 nn_s = ne_s+1;                % Number of nodes per side
 ne = ne_s^2;                  % Number of bidimensional elements in the whole plate
 nn = nn_s^2;                  % Number of nodes
-v_nn = (1:nn);
 dofn = 3;                     % DOF per node
 DOF = dofn*nn;                % DOF of the plate
-vdof = (1:DOF)';              % Vector containing all the DOF of the plate
 
-P = -1000;                                          % Load applied in the plate (N)
-xp = 0.5; yp = 0.5;                                 % Position of the applied load
-% Location of the load
-ixf = round(xp/plate.a/(plate.a/ne_s)) + 1;
-iyf = round(yp/plate.b/(plate.b/ne_s)) + 1;
-node_p = (ne_s + 1)*(iyf - 1) + ixf;
-
-solve = 'ss';                 % Boundary conditions for the plate: ff (free-free) or ss (simply supported)
+P = -1;                       % Uniform preassuer aplied on the plate
 
 % Mesh the plate
 [coordinates, nodes] = MeshRectanglularPlate(plate.a, plate.b,ne_s,ne_s);
@@ -87,7 +77,7 @@ for e = 1:ne
 end
 
 % Stiffness Matrix and Force vector
-K = zeros(DOF); M = zeros(DOF);F = zeros(DOF,1);
+K = zeros(DOF); F = zeros(DOF,1);
 D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];  % The inertia is included to take into account the thikness of the plate
 D_s = plate.G*plate.t*5/6*[1 0; 0 1];
 index = zeros(2);
@@ -100,27 +90,27 @@ for e = 1:ne
    detJe = xe*ye/4;                                                             % Transformation's Jacobian
    dofe = [index(1,1)*dofn - 2 index(1,1)*dofn - 1 index(1,1)*dofn...           % DOF of the element
            index(1,2)*dofn - 2 index(1,2)*dofn - 1 index(1,2)*dofn...
-           index(2,2)*dofn - 2 index(2,2)*dofn - 1 index(2,2)*dofn...
-           index(2,1)*dofn - 2 index(2,1)*dofn - 1 index(2,1)*dofn];
+           index(2,1)*dofn - 2 index(2,1)*dofn - 1 index(2,1)*dofn...
+           index(2,2)*dofn - 2 index(2,2)*dofn - 1 index(2,2)*dofn]; 
 
     % Bending matrix
     Kbe = zeros(dofn*nne);                                          % Initialization of element bending matrix
 
     for i = 1:iob
         xi = chi_ip.s(i);
-        for ip = 1:iob
-            eta = chi_ip.s(ip);                                      % Value of interpolation points
-            weigth = w_ip.s(i);                                          % Weight of interpolation
+        for j = 1:iob
+            eta = chi_ip.s(j);                                      % Value of interpolation points
+            w = w_ip.s(i);                                          % Weight of interpolation
             dNdxi_1 = -(1 - eta)/4; dNdeta_1 = -(1 - xi)/4;         % Derivates of shape functions
             dNdxi_2 = (1 - eta)/4; dNdeta_2 = -(1 + xi)/4; 
             dNdxi_3 = (1 + eta)/4; dNdeta_3 = (1 + xi)/4; 
             dNdxi_4 = -(1 + eta)/4; dNdeta_4 = (1 - xi)/4; 
             % Bending kinematic matrix
-            B_b = [0 0 -dNdxi_1*2/xe 0 0 -dNdxi_2*2/xe 0 0 -dNdxi_3*2/xe 0 0 -dNdxi_4*2/xe;
-                   0 dNdeta_1*2/ye 0 0 dNdeta_2*2/ye 0 0 dNdeta_3*2/ye 0 0 dNdeta_4*2/ye 0; 
-                   0 dNdxi_1*2/ye -dNdeta_1*2/xe 0 dNdxi_2*2/ye -dNdeta_2*2/xe 0 dNdxi_3*2/ye -dNdeta_3*2/xe 0 dNdxi_4*2/ye -dNdeta_4*2/xe]; 
+            B_b = [0 -dNdxi_1*2/xe 0 0 -dNdxi_2*2/xe 0 0 -dNdxi_3*2/xe 0 0 -dNdxi_4*2/xe 0;
+                   0 0 -dNdeta_1*2/ye 0 0 -dNdeta_2*2/ye 0 0 -dNdeta_3*2/ye 0 0 -dNdeta_4*2/ye; 
+                 0 -dNdeta_1*2/ye -dNdxi_1*2/xe 0 -dNdeta_2*2/ye -dNdxi_2*2/xe 0 -dNdeta_3*2/ye -dNdxi_3*2/xe 0 -dNdeta_4*2/ye -dNdxi_4*2/xe]; 
             % Bending matrix of the element
-            Kbe = Kbe + B_b'*D_b*B_b*detJe*weigth*weigth;                        % The weights are in both xi and eta
+            Kbe = Kbe + B_b'*D_b*B_b*detJe*w*w;                        % The weights are in both xi and eta
         end
     end
 
@@ -128,7 +118,7 @@ for e = 1:ne
     Kse = zeros(dofn*nne);                              % Initialization of element shear matrix
 
     % Selective integration allows to integrate the shear component with order 1 instead of 2
-    xi = chi_ip.f; eta = chi_ip.f;weigth = w_ip.f;
+    xi = chi_ip.f; eta = chi_ip.f;w = w_ip.f;
 
     N_1 = (1 - xi)*(1 - eta)/4; N_2 = (1 + xi)*(1 - eta)/4;           % Shape functions
     N_3 = (1 + xi)*(1 + eta)/4; N_4 = (1 - xi)*(1 + eta)/4;
@@ -138,102 +128,33 @@ for e = 1:ne
     dNdxi_4 = -(1 + eta)/4; dNdeta_4 = (1 - xi)/4;
 
     % Shear kinematic matrix
-    B_s =[dNdxi_1*2/xe 0 N_1 dNdxi_2*2/xe 0 N_2 dNdxi_3*2/xe 0 N_3 dNdxi_4*2/xe 0 N_4;
-          dNdeta_1*2/ye -N_1 0 dNdeta_2*2/ye -N_2 0 dNdeta_3*2/ye -N_3 0 dNdeta_4*2/ye -N_4 0];
+    B_s =[dNdxi_1*2/xe -N_1 0 dNdxi_2*2/xe -N_2 0 dNdxi_3*2/xe -N_3 0 dNdxi_4*2/xe -N_4 0;
+    dNdeta_1*2/ye 0 -N_1 dNdeta_2*2/ye 0 -N_2 dNdeta_3*2/ye 0 -N_3 dNdeta_4*2/ye 0 -N_4];
 
     % Shear matrix of the element
-    Kse = Kse + B_s'*D_s*B_s*detJe*weigth*weigth;
+    Kse = Kse + B_s'*D_s*B_s*detJe*w*w;
 
     Ke = Kbe + Kse;                                     % Stiffness matrix of the element
     
     % Global stiffness matrix
     K(dofe,dofe) = K(dofe,dofe) + Ke;
 
-    % Inertia matrix (lumped mass)
-    me = ;
+    % Force vector
+    Fe = zeros(dofn*nne,1);                             % Initialization of element force vector
+
+    xi = chi_ip.f; eta = chi_ip.f;w = w_ip.f;
+    N_1 = (1 - xi)*(1 - eta)/4; N_2 = (1 + xi)*(1 - eta)/4;         
+    N_3 = (1 + xi)*(1 + eta)/4; N_4 = (1 - xi)*(1 + eta)/4;
     
-    Me = me/4*[1 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0;...
-                    0 0 0 1 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0;...
-                    0 0 0 0 0 0 1 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0;...
-                    0 0 0 0 0 0 0 0 0 1 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0];
+    % Force vector of the element
+    fe = [N_1*P 0 0 N_2*P 0 0 N_3 0 0 N_4 0 0]';
+    Fe = Fe + fe*w*w*detJe;
 
-    M(dofe,dofe) = M(dofe,dofe) + Me;
-
-%     % Force vector
-%     Fe = zeros(dofn*nne,1);                             % Initialization of element force vector
-% 
-%     xi = chi_ip.f; eta = chi_ip.f;weigth = w_ip.f;
-%     N_1 = (1 - xi)*(1 - eta)/4; N_2 = (1 + xi)*(1 - eta)/4;         
-%     N_3 = (1 + xi)*(1 + eta)/4; N_4 = (1 - xi)*(1 + eta)/4;
-%     
-%     % Force vector of the element
-%     fe = [N_1*P 0 0 N_2*P 0 0 N_3*P 0 0 N_4*P 0 0]';
-%     Fe = Fe + fe*weigth*weigth*detJe;
-% 
-%     % Global force vector
-%     F(dofe,1) = F(dofe,1) + Fe;
+    % Global force vector
+    F(dofe,1) = F(dofe,1) + Fe;
 end
 
-% Load vector
-F(3*node_p - 2,1) = P;
 
-%% STATIC PROBLEM (K*u = F)
-
-u = zeros(dofn*nn,1);
-
-% Boundary conditions for simply suported beam
-k1 = find(coordinates == 0); k2 = find(coordinates == plate.a);
-k3 = find(coordinates > 0 & coordinates < 1);
-
-bc_X = k1(1:length(k1)/2);                  % Nodes along the X-axis
-bc_Y = k1(length(k1)/2+1:end) - nn;         % Nodes along the Y-axis
-bc_xL = k2(1:length(k2)/2);                 % Nodes along X = L
-bc_yL = k2(length(k2)/2+1:end) - nn;        % Nodes along Y = L
-
-rdof_ss = unique([bc_X.*dofn-2; bc_Y.*dofn-2; bc_xL.*dofn-2; bc_yL.*dofn-2],"rows");   % Restricted DOF
-fdof_ss = vdof;                             % Free DOF
-
-for i = 1:length(rdof_ss)
-    ip = rdof_ss(i);
-    fdof_ss(ip) = vdof(ip) - rdof_ss(i);
-end
-fdof_ss = find(fdof_ss > 0);
-
-% Boundary conditions for free free beam
-rdof_ff = 0;
-fdof_ff = (1:DOF)';
-
-switch solve
-    case 'ff'
-    u = K\F;                           % Displacements in free DOF for free-free plate
-    case 'ss'
-    K_FF = K(fdof_ss,fdof_ss);         % Stiffness matrix in free DOF
-    K_FR = K(fdof_ss,rdof_ss);
-    F_F = F(fdof_ss,1);                % Force vector in free DOF
-    
-    u_F = K_FF\F_F;                    % Displacements in free DOF
-    u(fdof_ss,1) = u_F;
-    
-    F_R = K_FR'*u_F;                   % Reactions in supports  
-end           
-
-%% PLOTS
-
-% Deformed Shape
-[w,thetax,thetay] = mytable(nn,u,DOF);
-x = coordinates(:,1); y = coordinates(:,2);
-figure(1)
-plot3(x,y,w,'.')
-xlabel('x(m)')
-ylabel('y(m)')
-zlabel('z(m)')
-
-% Contour
-figure(2)
-PlotFieldonMesh(coordinates,nodes,w)
-
-figure(3)
-PlotFieldonDefoMesh(coordinates,nodes,w,w)
 
 %% FUNCTIONS
 
