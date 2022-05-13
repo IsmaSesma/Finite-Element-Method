@@ -27,18 +27,20 @@ iob = 2;     % Bending matrix
 ios = 1;     % Shear matrix
 iof = 1;     % Force vector
 
-%% INPUT DATA AND MESH CREATION 
+%% INPUT DATA AND MESH
 
 ne_x = 10;                                              % Number of elements in X
 ne_y = ne_x;                                            % Number of elements in Y
-structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);     % Mesh definition
-ne = length(structure.mesh.elements.id);                % Number of elements
+dofn = 3;                                               % DOF per node
+
+structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
+PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
+
 nne = 4;                                                % Number of nodes per element
+ne = length(structure.mesh.elements.id);                % Number of elements
 nn = length(structure.mesh.nodes.id);                   % Number of nodes
 nn_s = ne_x + 1;                                        % Number of nodes per side
-dofn = 3;                                               % DOF per node
 DOF = dofn*nn;                                          % DOF of the plate
-structure.sets.Ug = (1:1:DOF)';
 v_nn = (1:nn);
 vdof = (1:DOF)';                                        % Vector containing all the DOF of the plate
 
@@ -46,8 +48,8 @@ vdof = (1:DOF)';                                        % Vector containing all 
 P = -1000;                                          
 xp = 0.5; yp = 0.5;                                     % Position of the applied load
 
-f = 2000;                       % Maximum frequency
-vf = (1:2000);                  % Vector of frequencies
+f = 2000;                                               % Maximum frequency
+vf = (1:2000);                                          % Vector of frequencies
 
 % Location of the load
 ixf = round(xp/plate.a/(plate.a/ne_x)) + 1;
@@ -55,21 +57,17 @@ iyf = round(yp/plate.b/(plate.b/ne_x)) + 1;
 node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free) or ss (simply supported)
-solve = 'ss';                
+solve = 'ss';
 
-% Mesh the plate
-[coordinates, nodes] = MeshRectanglularPlate(plate.a, plate.b,ne_x,ne_x);
-PlotMesh(coordinates, nodes)
+empty_elements = [56 73];
 
-%% STIFFNESS, INERTIA AND FORCE MATRICES
+%% CONNECTIVITY
 
 coord = zeros(nn_s,2);                        % Coordinates of the external nodes
 coord(:,1) = 0:plate.a/(nn_s-1):plate.a;      % X coordinates
 coord(:,2) = 0:plate.b/(nn_s-1):plate.b;      % Y coordinates
 
 [X,Y] = meshgrid(coord(:,1),coord(:,2));      % Mesh to represent the plate
-Z = zeros(nn_s);
-surf(X,Y,Z)
 
 coord_n = zeros(nn_s,2*nn_s);
 coord_n(:,1:2:end) = X;
@@ -95,7 +93,9 @@ for e = 1:ne
     connectivity(:,:,e) = [node(1) node(2); node(3) node(4)];
 end
 
-% Stiffness Matrix and Force vector
+%% STIFFNESS, INERTIA AND FORCE MATRICES
+
+% Initialization of required matrices
 K = zeros(DOF); M = zeros(DOF);F = zeros(DOF,1);
 D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];  % The inertia is included to take into account the thikness of the plate
 D_s = plate.G*plate.t*5/6*[1 0; 0 1];
@@ -112,66 +112,54 @@ for e = 1:ne
            index(2,2)*dofn - 2 index(2,2)*dofn - 1 index(2,2)*dofn...
            index(2,1)*dofn - 2 index(2,1)*dofn - 1 index(2,1)*dofn];
 
-    % Bending matrix
-    Kbe = zeros(dofn*nne);                                          % Initialization of element bending matrix
-
-    for i = 1:iob
-        xi = chi_ip.s(i);
-        for j = 1:iob
-            eta = chi_ip.s(j);                                      % Value of interpolation points
-            weigth = w_ip.s(i);                                     % Weight of interpolation
-            [~,dNdxi,dNdeta] = ShapeFunctions(xi,eta);              % Shape functions and derivatives 
-            % Bending kinematic matrix
-            B_b = [0 0 -dNdxi(1)*2/xe 0 0 -dNdxi(2)*2/xe 0 0 -dNdxi(3)*2/xe 0 0 -dNdxi(4)*2/xe;
-                   0 dNdeta(1)*2/ye 0 0 dNdeta(2)*2/ye 0 0 dNdeta(3)*2/ye 0 0 dNdeta(4)*2/ye 0; 
-                   0 dNdxi(1)*2/ye -dNdeta(1)*2/xe 0 dNdxi(2)*2/ye -dNdeta(2)*2/xe 0 dNdxi(3)*2/ye -dNdeta(3)*2/xe 0 dNdxi(4)*2/ye -dNdeta(4)*2/xe]; 
-            % Bending matrix of the element
-            Kbe = Kbe + B_b'*D_b*B_b*detJe*weigth*weigth;                        % The weights are in both xi and eta
+    if ismember(e,empty_elements)
+        Kbe = zeros(dofn*nne);
+        Kse = zeros(dofn*nne);
+        Me = zeros(dofn*nne);
+    else
+        % Bending matrix
+        Kbe = zeros(dofn*nne);                                          % Initialization of element bending matrix
+    
+        for i = 1:iob
+            xi = chi_ip.s(i);
+            for j = 1:iob
+                eta = chi_ip.s(j);                                      % Value of interpolation points
+                weigth = w_ip.s(i);                                     % Weight of interpolation
+                [~,dNdxi,dNdeta] = ShapeFunctions(xi,eta);              % Shape functions and derivatives 
+                % Bending kinematic matrix
+                B_b = [0 0 -dNdxi(1)*2/xe 0 0 -dNdxi(2)*2/xe 0 0 -dNdxi(3)*2/xe 0 0 -dNdxi(4)*2/xe;
+                       0 dNdeta(1)*2/ye 0 0 dNdeta(2)*2/ye 0 0 dNdeta(3)*2/ye 0 0 dNdeta(4)*2/ye 0; 
+                       0 dNdxi(1)*2/ye -dNdeta(1)*2/xe 0 dNdxi(2)*2/ye -dNdeta(2)*2/xe 0 dNdxi(3)*2/ye -dNdeta(3)*2/xe 0 dNdxi(4)*2/ye -dNdeta(4)*2/xe]; 
+                % Bending matrix of the element
+                Kbe = Kbe + B_b'*D_b*B_b*detJe*weigth*weigth;                        % The weights are in both xi and eta
+            end
         end
+    
+        % Shear matrix
+        Kse = zeros(dofn*nne);                              % Initialization of element shear matrix
+    
+        % Selective integration allows to integrate the shear component with order 1 instead of 2
+        xi = chi_ip.f; eta = chi_ip.f;weigth = w_ip.f;
+        [N,dNdxi,dNdeta] = ShapeFunctions(xi,eta);              % Shape functions and derivatives
+        % Shear kinematic matrix
+        B_s =[dNdxi(1)*2/xe 0 N(1) dNdxi(2)*2/xe 0 N(2) dNdxi(3)*2/xe 0 N(3) dNdxi(4)*2/xe 0 N(4);
+              dNdeta(1)*2/ye -N(1) 0 dNdeta(2)*2/ye -N(2) 0 dNdeta(3)*2/ye -N(3) 0 dNdeta(4)*2/ye -N(4) 0];
+    
+        % Shear matrix of the element
+        Kse = Kse + B_s'*D_s*B_s*detJe*weigth*weigth;
+
+        % Inertia matrix (lumped mass)
+        me = plate.rho*plate.t*xe*ye;                           % Mass of the element
+        Me = zeros(dofn*nne);
+        Me(1,1) = me/4; Me (4,4) = me/4; Me(7,7) = me/4; Me(10,10) = me/4;
     end
 
-    % Shear matrix
-    Kse = zeros(dofn*nne);                              % Initialization of element shear matrix
-
-    % Selective integration allows to integrate the shear component with order 1 instead of 2
-    xi = chi_ip.f; eta = chi_ip.f;weigth = w_ip.f;
-    [N,dNdxi,dNdeta] = ShapeFunctions(xi,eta);              % Shape functions and derivatives
-    % Shear kinematic matrix
-    B_s =[dNdxi(1)*2/xe 0 N(1) dNdxi(2)*2/xe 0 N(2) dNdxi(3)*2/xe 0 N(3) dNdxi(4)*2/xe 0 N(4);
-          dNdeta(1)*2/ye -N(1) 0 dNdeta(2)*2/ye -N(2) 0 dNdeta(3)*2/ye -N(3) 0 dNdeta(4)*2/ye -N(4) 0];
-
-    % Shear matrix of the element
-    Kse = Kse + B_s'*D_s*B_s*detJe*weigth*weigth;
-
-    % Stiffness matrix of the element
-    Ke = Kbe + Kse;                                     
-    
-    % Global stiffness matrix
-    K(dofe,dofe) = K(dofe,dofe) + Ke;
-
-    % Inertia matrix (lumped mass)
-    me = plate.rho*plate.t*xe*ye;                           % Mass of the element
-    
-    Me = me/4*[1 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0;...
-                    0 0 0 1 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0;...
-                    0 0 0 0 0 0 1 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0;...
-                    0 0 0 0 0 0 0 0 0 1 0 0; 0 0 0 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0 0 0 0 0];
-
-    M(dofe,dofe) = M(dofe,dofe) + Me;
-
-%     % Force vector
-%     Fe = zeros(dofn*nne,1);                             % Initialization of element force vector
-% 
-%     xi = chi_ip.f; eta = chi_ip.f;weigth = w_ip.f;
-%     N_1 = (1 - xi)*(1 - eta)/4; N_2 = (1 + xi)*(1 - eta)/4;         
-%     N_3 = (1 + xi)*(1 + eta)/4; N_4 = (1 - xi)*(1 + eta)/4;
-%     
-%     % Force vector of the element
-%     fe = [N_1*P 0 0 N_2*P 0 0 N_3*P 0 0 N_4*P 0 0]';
-%     Fe = Fe + fe*weigth*weigth*detJe;
-% 
-%     % Global force vector
-%     F(dofe,1) = F(dofe,1) + Fe;
+        % Stiffness matrix of the element
+        Ke = Kbe + Kse;                                     
+        % Global stiffness matrix
+        K(dofe,dofe) = K(dofe,dofe) + Ke;
+        % Global inertia matrix
+        M(dofe,dofe) = M(dofe,dofe) + Me;
 end
 
 % Load vector
@@ -182,8 +170,8 @@ F(3*node_p - 2,1) = P;
 u = zeros(dofn*nn,1);
 
 % Boundary conditions for simply suported beam
-k1 = find(coordinates == 0); k2 = find(coordinates == plate.a);
-k3 = find(coordinates > 0 & coordinates < 1);
+k1 = find(structure.mesh.nodes.coords == 0); k2 = find(structure.mesh.nodes.coords == plate.a);
+k3 = find(structure.mesh.nodes.coords > 0 & structure.mesh.nodes.coords < 1);
 
 bc_X = k1(1:length(k1)/2);                  % Nodes along the X-axis
 bc_Y = k1(length(k1)/2+1:end) - nn;         % Nodes along the Y-axis
@@ -218,23 +206,60 @@ switch solve
     F_R = K_FR'*u_F;                   % Reactions in supports 
 end           
 
+w = u(1:3:DOF);
+thetax = u(2:3:DOF);
+thetay = u(3:3:DOF);
+
 %% PLOTS OF STATIC PROBLEM
 
-% Deformed Shape
-[w,thetax,thetay] = mytable(nn,u,DOF);
-x = coordinates(:,1); y = coordinates(:,2);
-figure(1)
-plot3(x,y,w,'.')
-xlabel('x(m)')
-ylabel('y(m)')
-zlabel('z(m)')
+figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
+t = tiledlayout(1,3);
+t.TileSpacing = 'compact';
+t.Padding = 'compact';
+labels= {'Vertical Displacement (mm)','\theta_x (º)','\theta_y (º)'};
+% Initialization of the required matrices
+out = [w,rad2deg(thetax),rad2deg(thetay)];
+nd = zeros();
+for c=1:3
+    nexttile(c)
+    X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+    Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+    profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+    for iel=1:length(structure.mesh.elements.nodes)   
+        for i=1:size(structure.mesh.elements.nodes,2)
+        nd(i)=structure.mesh.elements.nodes(iel,i);       
+        X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
+        Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
+        end   
+        profile(:,iel) = out(nd',c) ;         
+    end
+    fill(X,Y,profile)
+    colorbar
+    axis equal
+    xlabel('x (m)')
+    ylabel('y (m)')
+    title(labels{c})
+end
 
-% Contour
-figure(2)
-PlotFieldonMesh(coordinates,nodes,w)
-
-figure(3)
-PlotFieldonDefoMesh(coordinates,nodes,w,w)
+figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
+X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+Z = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+for iel=1:length(structure.mesh.elements.nodes)   
+    for i=1:size(structure.mesh.elements.nodes,2)
+    nd(i)=structure.mesh.elements.nodes(iel,i);       
+    X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
+    Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
+    end
+    Z(:,iel)=thetax(nd);                 
+end
+fill3(X,Y,Z*1000,Z*1000)
+colorbar
+xlabel('x (m)')
+ylabel('y (m)')
+zlabel('z (mm)')
+title('Vertical displacement on the deformed mesh (mm)')
 
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
@@ -252,10 +277,10 @@ Q0 = squeeze(q0(node_p*3-2,:));
 %% PLOTS OF DYNAMIC SYSTEM
 
 % Amplitude vs Frequency
-figure(4)
+figure()
 semilogy(vf,abs(Q0))
 title("Amplitude Bode Diagram")
 
 % Angular offset vs Frequency
-figure(5)
-plot(f,unwrap(angle(Q0)))
+figure()
+plot(vf,unwrap(angle(Q0)))
