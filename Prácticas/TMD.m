@@ -108,7 +108,7 @@ end
 
 % Squeeze of vectors of amplitude in order to simplify graphics
 
-Q0_c = squeeze(q0_c(FDOF,:));
+Q0_c = squeeze(q0_c(FDOF-1,:));
 
 %% FIGURES OF CONSERVATIVE SYSTEM
 

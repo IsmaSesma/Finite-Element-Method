@@ -9,7 +9,7 @@ clc;clear;close all
 
 %% BEAM'S PROPERTIES
 
-beam.input = importdata('data_test2\geomdata.txt',';',2);
+beam.input = importdata('data_test3\geomdata.txt',';',2);               % CHANGE THE FILE
 beam.m = beam.input.data(:,1);
 beam.L = beam.input.data(:,2);
 beam.b = beam.input.data(:,3);
@@ -30,9 +30,11 @@ beam.seed{5} = {'ZZ','T'};                                          % Infill pat
 beam.seed{6} = {'a','b','c'};                                       % Sets of the same beam (3 models of each one)
 
  % Specify the files that are going to be read here
-casestoread = {'F85453ZZa','F70603Ta','F50903Ta','F40153Ta','F99004ZZa','F50904Ta','F40154Ta',...
-               'F85453ZZa','F70603Ta','F50903Ta','F99004ZZa','F50904Ta','F40154Ta',...
-               'F85453ZZa','F70603Ta','F50903Ta','F99004ZZa','F50904Ta','F40154Ta'};   
+casestoread = {'F99001ZZa','F90001ZZa','F50451Ta','F40001Ta','F99002ZZa','F90302ZZa','F85452ZZa','F70602Ta','F50902Ta','F40002Ta','F99003ZZa','F90303ZZa','F90304ZZa','F85454ZZa',...
+               'F99001ZZb','F90001ZZb','F50451Tb','F40001Tb','F99002ZZb','F90302ZZb','F85452ZZb','F70602Tb','F50902Tb','F40002Tb','F99003ZZb','F90303ZZb','F90304ZZb','F85454ZZb',...
+               'F99001ZZc','F90001ZZc','F50451Tc','F40001Tc','F99002ZZc','F90302ZZc','F85452ZZc','F50902Tc','F40002Tc','F99003ZZc','F90303ZZc','F90304ZZc','F85454ZZc','F70604Tc'
+};
+
 
 % Generate all possible combinations of beams
 
@@ -53,7 +55,7 @@ for i=1:length(beam.seed{1})
 end
 
 for s=1:length(casestoread)
-    filecontent = readmatrix(['data_test2\' casestoread{s} '.csv'],'Delimiter',';','NumHeaderLines',20,'DecimalSeparator',',');
+    filecontent = readmatrix(['data_test3\' casestoread{s} '.csv'],'Delimiter',';','NumHeaderLines',20,'DecimalSeparator',',');             % CHANGE THE FILE
     test.(casestoread{s}).freq = filecontent(:,1);
     test.(casestoread{s}).real = filecontent(:,2);
     test.(casestoread{s}).imag = filecontent(:,3);
@@ -67,7 +69,7 @@ for s=1:length(casestoread)
     [test.(casestoread{s}).peak, test.(casestoread{s}).rf] = findpeaks(tolook_v,tolook_f,'MinPeakDistance',800,'MinPeakProminence',.1,'NPeaks',3);
     tolook_f = test.(casestoread{s}).freq(10:end);
     tolook_v = log(1./test.(casestoread{s}).amp(10:end));
-    [test.(casestoread{s}).min, test.(casestoread{s}).af] = findpeaks(tolook_v,tolook_f,'MinPeakDistance',500,'MinPeakProminence',.78,'NPeaks',3);                                           % Find the antiresonance frequencies
+    [test.(casestoread{s}).min, test.(casestoread{s}).af] = findpeaks(tolook_v,tolook_f,'MinPeakDistance',500,'MinPeakProminence',.6,'NPeaks',3);                                           % Find the antiresonance frequencies
     test.(casestoread{s}).min = 1./test.(casestoread{s}).min;
 
     % Compute the elastic module with three different methods
@@ -80,7 +82,7 @@ end
 
 %% FIGURES
 figure()
-tiledlayout(7,3)
+tiledlayout(7,6)
 for t=1:length(casestoread)
     nexttile
     hold on
@@ -94,13 +96,13 @@ end
 %% EXPORT RESULTS TO .CSV FILE
 
 for i=1:length(casestoread)
-    T(i,:) = table(casestoread(i),beam.m(i),beam.L(i),beam.b(i),beam.t(i),test.(casestoread{i}).rf',test.(casestoread{i}).af', ...
+    T(i,:) = table(casestoread(i),beam.m(i),beam.L(i),beam.b(i),beam.t(i),beam.rho(i),test.(casestoread{i}).rf',test.(casestoread{i}).af', ...
         test.(casestoread{i}).E_iso',test.(casestoread{i}).E_af',test.(casestoread{i}).E_rf');
 end
-T = renamevars(T,["Var1","Var2","Var3","Var4","Var5","Var6","Var7","Var8","Var9","Var10"], ...
-    ["Beam","Mass (kg)","Length (m)","Width (m)","Thickness (m)","Resonance Frequencies (Hz)","Antirresonance Frequencies (Hz)","E_ISO (GPa)","E_AF (GPa)","E_RF (GPa)"]);
+T = renamevars(T,["Var1","Var2","Var3","Var4","Var5","Var6","Var7","Var8","Var9","Var10","Var11"], ...
+    ["Beam","Mass (kg)","Length (m)","Width (m)","Thickness (m)","Desnity (kg/m3)","Resonance Frequencies (Hz)","Antirresonance Frequencies (Hz)","E_ISO (GPa)","E_AF (GPa)","E_RF (GPa)"]);
 
-filename = 'Set_test2.xlsx';              % Rename the file name when changing the data files
+filename = 'Set_test3.xlsx';              % Rename the file name when changing the data files
 writetable(T,filename,"WriteMode","append","PreserveFormat",true)
 %% FUNCTIONS
 

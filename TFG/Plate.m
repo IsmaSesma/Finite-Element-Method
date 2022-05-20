@@ -13,6 +13,7 @@ plate.m = 0.5;                                      % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;        % Plate's density
 plate.I = plate.t^3/12;                             % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
+plate.tmd = 0.5;                                    % Thickness of the TMD
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -33,6 +34,9 @@ ne_x = 10;                                              % Number of elements in 
 ne_y = ne_x;                                            % Number of elements in Y
 dofn = 3;                                               % DOF per node
 
+empty_elements = [33 35 43 45 53 54 55];            % Elements that are no in the model
+tmd_elements = [44];                                  % Elements that act as Tunned Mass Dumper
+
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
 PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
 
@@ -46,7 +50,7 @@ vdof = (1:DOF)';                                        % Vector containing all 
 
 % Load applied
 P = -1000;                                          
-xp = 0.5; yp = 0.5;                                     % Position of the applied load
+xp = 0.9; yp = 0.9;                                     % Position of the applied load
 
 f = 2000;                                               % Maximum frequency
 vf = (1:2000);                                          % Vector of frequencies
@@ -58,8 +62,6 @@ node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free) or ss (simply supported)
 solve = 'ss';
-
-empty_elements = [56 73];
 
 %% CONNECTIVITY
 
@@ -117,6 +119,15 @@ for e = 1:ne
         Kse = zeros(dofn*nne);
         Me = zeros(dofn*nne);
     else
+
+        if ismember(e,tmd_elements)
+            plate.t = plate.tmd;
+            plate.rho = plate.m/plate.a/plate.b/plate.t;        % Plate's density
+            plate.I = plate.t^3/12;
+        else
+            plate.t = plate.t;
+        end
+
         % Bending matrix
         Kbe = zeros(dofn*nne);                                          % Initialization of element bending matrix
     
@@ -212,6 +223,7 @@ thetay = u(3:3:DOF);
 
 %% PLOTS OF STATIC PROBLEM
 
+% Plots the displacement and angles of the plate in 2D
 figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
 t = tiledlayout(1,3);
 t.TileSpacing = 'compact';
@@ -241,6 +253,7 @@ for c=1:3
     title(labels{c})
 end
 
+% Plots the 3D plate deformed
 figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
 X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
 Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
@@ -252,7 +265,28 @@ for iel=1:length(structure.mesh.elements.nodes)
     X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
     Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
     end
-    Z(:,iel)=thetax(nd);                 
+    Z(:,iel)=w(nd);                 
+end
+fill3(X,Y,Z*1000,Z*1000)
+colorbar
+xlabel('x (m)')
+ylabel('y (m)')
+zlabel('z (mm)')
+title('Vertical displacement on the deformed mesh (mm)')
+
+%
+figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
+X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+Z = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+for iel=1:length(structure.mesh.elements.nodes)   
+    for i=1:size(structure.mesh.elements.nodes,2)
+    nd(i)=structure.mesh.elements.nodes(iel,i);       
+    X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
+    Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
+    end
+    Z(:,iel)=w(nd);                 
 end
 fill3(X,Y,Z*1000,Z*1000)
 colorbar
