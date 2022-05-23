@@ -13,7 +13,7 @@ plate.m = 0.5;                                      % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;        % Plate's density
 plate.I = plate.t^3/12;                             % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
-plate.tmd = 0.5;                                    % Thickness of the TMD
+plate.tmd = 0.01;                                    % Thickness of the TMD
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -21,7 +21,7 @@ plate.tmd = 0.5;                                    % Thickness of the TMD
 chi_ip.f = 0;   % Integration point coordinate
 w_ip.f = 2;     % Integration weight
 % n = 2 quadrature
-chi_ip.s = [-1 1]*1/sqrt(3);   
+chi_ip.s = [-1 1]*1/sqrt(3);    
 w_ip.s = [1 1];    
 % Integration order
 iob = 2;     % Bending matrix  
@@ -34,7 +34,7 @@ ne_x = 10;                                              % Number of elements in 
 ne_y = ne_x;                                            % Number of elements in Y
 dofn = 3;                                               % DOF per node
 
-empty_elements = [33 35 43 45 53 54 55];            % Elements that are no in the model
+empty_elements = [12:19 22:29 32:39 49 59 62:69 72:79 82:89];            % Elements that are not in the model
 tmd_elements = [44];                                  % Elements that act as Tunned Mass Dumper
 
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -294,6 +294,9 @@ xlabel('x (m)')
 ylabel('y (m)')
 zlabel('z (mm)')
 title('Vertical displacement on the deformed mesh (mm)')
+%%
+figure()
+plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 

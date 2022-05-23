@@ -2,7 +2,7 @@
 %           FEM DYNAMIC ANALYSIS OF 1D FREE-FREE BEAM 
 % *************************************************************
 
-clc;clear;close all;
+ clc;clear;close all;
 set(0,'DefaultFigureVisible','on')
 
 %% MASIC AND GEOMETRIC DATA (all in ISU)
@@ -147,6 +147,8 @@ xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
 
 fprintf('Conservative system finished\n');
 
+
+return
 %% PROPORTIONAL DAMPING MODEL ([F] = α[M] + β[K])
 
 % Dumping matrix with consistent mass matrix
