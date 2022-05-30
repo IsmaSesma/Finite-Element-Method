@@ -2,18 +2,19 @@
 %           ANALYSIS OF A CANTILEVER BEAM AS A TUNNED MASS DUMPER 
 % ***********************************************************************
 
-clc;clear;close all;
+% clc;clear;close all;
 
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 2.E9;                                       % Elastic modulus
-beam.L = 0.1695;                                       % Beam's length
-beam.b = 0.0205;                                      % Beam's width
-beam.t = 0.0041;                                     % Beam's thickness
-beam.tl = 0.0041;                                     % Thickness of the last element of the beam      
-beam.m = 0.03;                                      % Beam's mass
+beam.E = 70E9;                                       % Elastic modulus
+beam.L = 5/3;                                       % Beam's length
+beam.b = 1/3;                                      % Beam's width
+beam.t = 0.01;                                     % Beam's thickness
+beam.tl = 0.01;                                     % Thickness of the last element of the beam      
+% beam.m = 0.02;                                      % Beam's mass
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
-beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
+% beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
+beam.rho = 25;
 beam.m = beam.rho*beam.L*beam.b*beam.t;
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
 beam.x = (0:0.001:beam.L);                          % Beam's partition 
@@ -21,20 +22,21 @@ a = 1E-6; b = 1E-6;                                 % Proportional damping coeff
 
 %% INPUT DATA
 
-ne = 100;                       % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
+ne = 10;                        % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
-DOF = dofn*nn;                  % Total dof
-RDOF = 2;                       % Number of restricted DOF
-FDOF = DOF - RDOF;              % Number of free DOF
+DOF = dofn*nn;                  % Total dof 
 
 p = zeros(DOF,1);
 p(DOF-1)= 1;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 2000;                       % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 
-free_dof = (3:DOF);             % Free DOF                    
 restr_dof = [1 2];              % Restricted DOF in the fixed end
+free_dof = (3:DOF);             % Free DOF                    
+
+RDOF = length(restr_dof);       % Number of restricted DOF
+FDOF = DOF - RDOF;              % Number of free DOF
 
 %% STIFFNESS AND INERTIA BEAM MATRICES
 
@@ -114,13 +116,13 @@ Q0_c = squeeze(q0_c(FDOF-1,:));
 %% FIGURES OF CONSERVATIVE SYSTEM
 
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
-figure(3)
+figure(1)
 semilogy(f,abs(Q0_c))                   
 title("Amplitude Bode Diagram of Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]")
 
 % Plots Angular offset vs Frecuency 
-figure(4)
+figure(2)
 plot(f,unwrap(angle(Q0_c)))                  
 title("Angular offset Bode Diagram of Conservative System","FontSize",12)
 xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
