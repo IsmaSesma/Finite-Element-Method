@@ -2,12 +2,12 @@
 %           FEM MODEL OF A PLATE USING RECTANGULAR ELEMENTS 
 % ***********************************************************************
 
-%clc;clear;close all;
+clc;clear;close all;
 
 %% MASIC AND GEOMETRIC DATA
 
 plate.E = 70E9; plate.nu = 0.3;
-plate.a = 1; plate.b = 2;                           % Plate's dimensions
+plate.a = 1; plate.b = 1;                           % Plate's dimensions
 plate.t = 0.01;                                      % Plate's thickness
 plate.m = 0.5;                                      % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;        % Plate's density
@@ -30,12 +30,32 @@ iof = 1;     % Force vector
 
 %% INPUT DATA AND MESH
 
-ne_x = 6;                                              % Number of elements in X
+ne_x = 17;                                              % Number of elements in X
 ne_y = round(ne_x/plate.a*plate.b);                    % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
-empty_elements = [8 14 20 26 32 38 44 50 56 62 11 17 23 29 35 41 47 53 59 65 63 64];            % Elements that are not in the model
-tmd_elements = [0];                                  % Elements that act as Tunned Mass Dumper
+cont = 1;
+empty_elements = zeros(19,19); a = length(empty_elements)^2;
+for i = 1:6     % Elements that are not in the model
+    if i == 8
+        empty = (i*ne_x+2):(i+1)*ne_x-1;
+    else
+        empty = (i*ne_x+2):2:((i+1)*ne_x-1);
+    end
+    empty_elements(i,1:length(empty)) = empty;
+    
+    j = i + 11;
+    if j == 18
+        empty = (j*ne_x+2):(j+1)*ne_x-1;
+    else
+        empty = (j*ne_x+2):2:((j+1)*ne_x-1);
+    end
+empty_elements(j,1:length(empty)) = empty;
+end
+    
+empty_elements = reshape(empty_elements, [a,1]);
+empty_elements = nonzeros(empty_elements);
+tmd_elements = 0;                                  % Elements that act as Tunned Mass Dumper
 
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
 PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
@@ -61,7 +81,7 @@ iyf = round(yp*plate.b/(plate.b/ne_y)) + 1;
 node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free), cc (clamped) or ss (simply supported)
-solve = 'cc';
+solve = 'ss';
 
 %% CONNECTIVITY
 
@@ -295,8 +315,8 @@ plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
-D_FF = zeros(length(fdof),length(fdof),f);                    % Dynamic stiffness matrix of free DOF
-q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+%D_FF = zeros(length(fdof),length(fdof),f);                    % Dynamic stiffness matrix of free DOF
+%q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
 
 for i = 1:f
     D_FF(:,:,i) = (K_FF - (2*pi*i)^2*M_FF);
