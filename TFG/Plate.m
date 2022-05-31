@@ -55,6 +55,7 @@ end
     
 empty_elements = reshape(empty_elements, [a,1]);
 empty_elements = nonzeros(empty_elements);
+empty_elements = 0;                                % Decomment to simulate uniform plate
 tmd_elements = 0;                                  % Elements that act as Tunned Mass Dumper
 
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -70,7 +71,7 @@ vdof = (1:DOF)';                                        % Vector containing all 
 
 % Load applied
 P = -1;                                          
-xp = 0.5; yp = 0.8;                                     % Position of the applied load (% of the length)
+xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
 
 f = 2000;                                               % Maximum frequency
 vf = (1:2000);                                          % Vector of frequencies
@@ -81,7 +82,7 @@ iyf = round(yp*plate.b/(plate.b/ne_y)) + 1;
 node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free), cc (clamped) or ss (simply supported)
-solve = 'ss';
+solve = 'ff';
 
 %% CONNECTIVITY
 
@@ -243,14 +244,14 @@ end
 
  % Solve the system
  K_FF = K(fdof,fdof);         % Stiffness matrix in free DOF
- K_FR = K(fdof,rdof);
+ %K_FR = K(fdof,rdof);
  M_FF = M(fdof,fdof);         % Mass matrix in free DOF
  F_F = F(fdof,1);                % Force vector in free DOF
      
  u_F = K_FF\F_F;                    % Displacements in free DOF
  u(fdof,1) = u_F;
         
- F_R = K_FR'*u_F;                   % Reactions in supports 
+ %F_R = K_FR'*u_F;                   % Reactions in supports 
 
 w = u(1:3:DOF);
 thetax = u(2:3:DOF);
@@ -316,11 +317,11 @@ plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 %D_FF = zeros(length(fdof),length(fdof),f);                    % Dynamic stiffness matrix of free DOF
-%q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
 
 for i = 1:f
-    D_FF(:,:,i) = (K_FF - (2*pi*i)^2*M_FF);
-    q0_F(:,i) = D_FF(:,:,i)\F_F;
+    D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
+    q0_F(:,i) = D_FF(:,:)\F_F;
     q0(fdof,i) = q0_F(:,i);
 end
 
