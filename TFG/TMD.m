@@ -6,11 +6,11 @@
 
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 70E9;                                       % Elastic modulus
+beam.E = 3.5E9;                                       % Elastic modulus
 beam.L = 5/3;                                       % Beam's length
-beam.b = 1/3;                                      % Beam's width
-beam.t = 0.01;                                     % Beam's thickness
-beam.tl = 0.01;                                     % Thickness of the last element of the beam      
+beam.b = 0.01;                                      % Beam's width
+beam.t = 0.004;                                     % Beam's thickness
+beam.tl = 0.004;                                     % Thickness of the last element of the beam      
 % beam.m = 0.02;                                      % Beam's mass
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
 % beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density

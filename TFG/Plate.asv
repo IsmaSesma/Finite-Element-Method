@@ -6,14 +6,14 @@ clc;clear;close all;
 
 %% MASIC AND GEOMETRIC DATA
 
-plate.E = 3E9; plate.nu = 0.3;
-plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
-plate.t = 0.004;                                      % Plate's thickness
-plate.m = 0.135;                                      % Plate's mass
+plate.E = 70E9; plate.nu = 0.3;
+plate.a = 1; plate.b = 1;                           % Plate's dimensions
+plate.t = 0.01;                                      % Plate's thickness
+plate.m = 0.5;                                      % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;        % Plate's density
 plate.I = plate.t^3/12;                             % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
-plate.tmd = 0.004;                                    % Thickness of the TMD
+plate.tmd = 0.01;                                    % Thickness of the TMD
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -37,15 +37,15 @@ dofn = 3;                                               % DOF per node
 cont = 1;
 empty_elements = zeros(19,19); a = length(empty_elements)^2;
 for i = 1:6     % Elements that are not in the model
-    if i == 6
+    if i == 8
         empty = (i*ne_x+2):(i+1)*ne_x-1;
     else
         empty = (i*ne_x+2):2:((i+1)*ne_x-1);
     end
     empty_elements(i,1:length(empty)) = empty;
     
-    j = i + 9;
-    if j == ne_x-2
+    j = i + 11;
+    if j == 18
         empty = (j*ne_x+2):(j+1)*ne_x-1;
     else
         empty = (j*ne_x+2):2:((j+1)*ne_x-1);
@@ -55,7 +55,6 @@ end
     
 empty_elements = reshape(empty_elements, [a,1]);
 empty_elements = nonzeros(empty_elements);
-empty_elements = 0;                                % Decomment to simulate uniform plate
 tmd_elements = 0;                                  % Elements that act as Tunned Mass Dumper
 
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -71,7 +70,7 @@ vdof = (1:DOF)';                                        % Vector containing all 
 
 % Load applied
 P = -1;                                          
-xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
+xp = 0.5; yp = 0.8;                                     % Position of the applied load (% of the length)
 
 f = 2000;                                               % Maximum frequency
 vf = (1:2000);                                          % Vector of frequencies
@@ -82,7 +81,7 @@ iyf = round(yp*plate.b/(plate.b/ne_y)) + 1;
 node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free), cc (clamped) or ss (simply supported)
-solve = 'ff';
+solve = 'ss';
 
 %% CONNECTIVITY
 
@@ -244,14 +243,14 @@ end
 
  % Solve the system
  K_FF = K(fdof,fdof);         % Stiffness matrix in free DOF
- %K_FR = K(fdof,rdof);
+ K_FR = K(fdof,rdof);
  M_FF = M(fdof,fdof);         % Mass matrix in free DOF
  F_F = F(fdof,1);                % Force vector in free DOF
      
  u_F = K_FF\F_F;                    % Displacements in free DOF
  u(fdof,1) = u_F;
         
- %F_R = K_FR'*u_F;                   % Reactions in supports 
+ F_R = K_FR'*u_F;                   % Reactions in supports 
 
 w = u(1:3:DOF);
 thetax = u(2:3:DOF);
@@ -317,15 +316,15 @@ plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 %D_FF = zeros(length(fdof),length(fdof),f);                    % Dynamic stiffness matrix of free DOF
-q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+%q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
 
 for i = 1:f
-    D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
-    q0_F(:,i) = D_FF(:,:)\F_F;
+    D_FF(:,:,i) = (K_FF - (2*pi*i)^2*M_FF);
+    q0_F(:,i) = D_FF(:,:,i)\F_F;
     q0(fdof,i) = q0_F(:,i);
 end
 
-Q0 = squeeze(q0(DOF-2,:));
+Q0 = squeeze(q0(node_p*3-2,:));
 
 %% PLOTS OF DYNAMIC SYSTEM
 
