@@ -7,13 +7,16 @@ clc;clear;close all;
 %% MASIC AND GEOMETRIC DATA
 
 plate.E = 3E9; plate.nu = 0.3;
-plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
-plate.t = 0.004;                                      % Plate's thickness
-plate.m = 0.135;                                      % Plate's mass
-plate.rho = plate.m/plate.a/plate.b/plate.t;        % Plate's density
-plate.I = plate.t^3/12;                             % Plate's inertia
+plate.a = 0.17; plate.b = 0.17;                             % Plate's dimensions
+plate.t = 0.004;                                            % Plate's thickness
+plate.m = 0.1445;                                           % Plate's mass
+plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
+plate.rhos = plate.rho*plate.t;                             % Plate's surface density
+plate.I = plate.t^3/12;                                     % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
-plate.tmd = 0.004;                                    % Thickness of the TMD
+plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);
+plate.tmd = 0.004;                                          % Thickness of the TMD
+plate.Leissa = plate.a^2*sqrt(plate.rhos/plate.D);          % Parameter defined in Leissa
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -71,10 +74,10 @@ vdof = (1:DOF)';                                        % Vector containing all 
 
 % Load applied
 P = -1;                                          
-xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
+xp = 0.5; yp = 0.5;                                     % Position of the applied load (% of the length)
 
 f = 2000;                                               % Maximum frequency
-vf = (1:2000);                                          % Vector of frequencies
+vf = (1:f);                                          % Vector of frequencies
 
 % Location of the load
 ixf = round(xp*plate.a/(plate.a/ne_x)) + 1;
@@ -82,7 +85,7 @@ iyf = round(yp*plate.b/(plate.b/ne_y)) + 1;
 node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free), cc (clamped) or ss (simply supported)
-solve = 'ff';
+solve = 'ss';
 
 %% CONNECTIVITY
 
@@ -325,7 +328,12 @@ for i = 1:f
     q0(fdof,i) = q0_F(:,i);
 end
 
-Q0 = squeeze(q0(DOF-2,:));
+Q0 = squeeze(q0(511,:));
+
+[v,d] = eigs(K_FF,M_FF);
+[W,order] = sort(sum(sqrt(d)./2./pi));
+W_ = diag(W);
+V = v(:,order);
 
 %% PLOTS OF DYNAMIC SYSTEM
 

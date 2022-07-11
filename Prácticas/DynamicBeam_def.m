@@ -148,7 +148,7 @@ xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
 fprintf('Conservative system finished\n');
 
 
-return
+% return
 %% PROPORTIONAL DAMPING MODEL ([F] = α[M] + β[K])
 
 % Dumping matrix with consistent mass matrix
