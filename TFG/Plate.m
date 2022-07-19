@@ -33,16 +33,15 @@ iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
 
-tmd.L = 0.01;
-tmd.Leff = 15*tmd.L + tmd.L/2;
-tmd.ml = plate.rho*plate.t*(4*tmd.L)^2;
-tmd.I = tmd.L*plate.t^3/12;
-tmd.t = 0.004:0.001:0.1;
-
+tmd.L = 0.01;                               % Element length
+tmd.Leff = 3*tmd.L + 2*tmd.L/2;              % Effective length
+tmd.ml = plate.rho*0.001*(3*tmd.L)^2;     % Mass of the tongue
+tmd.I = tmd.L*0.001^3/12;
+tmd.t = 0.004:0.001:0.1;                
 
 w0 = zeros(length(tmd.t),1);
 for i = 1:length(tmd.t)
-     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*tmd.L^2*tmd.t(i)));
+     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*(2*tmd.L)^2*tmd.t(i)));
 end
 
 figure()
@@ -55,26 +54,26 @@ ne_y = round(ne_x/plate.a*plate.b);                    % Number of elements in Y
 dofn = 3;                                               % DOF per node
 
 empty_elements = zeros(19,19); a = length(empty_elements)^2;
-for i = 1:15     % Elements that are not in the model
-    if i == 15
+for i = 1:6                  % Elements that are not in the model
+    if i == 6
         empty = (i*ne_x+2):(i+1)*ne_x-1;
     else
         empty = (i*ne_x+2):2:((i+1)*ne_x-1);
     end
     empty_elements(i,1:length(empty)) = empty;
     
-%     j = i + 9;               % For more than one row of TMD      
-%     if j == ne_x-2
-%         empty = (j*ne_x+2):(j+1)*ne_x-1;
-%     else
-%         empty = (j*ne_x+2):2:((j+1)*ne_x-1);
-%     end
-% empty_elements(j,1:length(empty)) = empty;
+    j = i + 9;               % For more than one row of TMD      
+    if j == ne_x-2
+        empty = (j*ne_x+2):(j+1)*ne_x-1;
+    else
+        empty = (j*ne_x+2):2:((j+1)*ne_x-1);
+    end
+empty_elements(j,1:length(empty)) = empty;
 end
     
 empty_elements = reshape(empty_elements, [a,1]);
 empty_elements = nonzeros(empty_elements);
-%empty_elements = 0;                                % Decomment 8to simulate uniform plate
+empty_elements = 0;                                % Decomment to simulate uniform plate
 tmd_elements = 0;                                  % Elements that act as Tunned Mass Dumper
 
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -160,10 +159,11 @@ for e = 1:ne
         Me = zeros(dofn*nne);
     else
 
-        if ismember(e,tmd_elements)
+        if ismember(e,tmd_elements)                                     % Recalculate Di for the elements with extra mass
             plate.t = plate.tmd;
-            plate.rho = plate.m/plate.a/plate.b/plate.t;        % Plate's density
             plate.I = plate.t^3/12;
+            D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];
+            D_s = plate.G*plate.t*5/6*[1 0; 0 1];
         else
             plate.t = plate.t;
         end

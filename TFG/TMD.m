@@ -2,19 +2,17 @@
 %           ANALYSIS OF A CANTILEVER BEAM AS A TUNNED MASS DUMPER 
 % ***********************************************************************
 
-% clc;clear;close all;
+ clc;clear;close all;
 
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 3.5E9;                                       % Elastic modulus
-beam.L = 5/3;                                       % Beam's length
+beam.E = 3E9;                                       % Elastic modulus
+beam.L = 0.05;                                       % Beam's length
 beam.b = 0.01;                                      % Beam's width
-beam.t = 0.004;                                     % Beam's thickness
-beam.tl = 0.004;                                     % Thickness of the last element of the beam      
-% beam.m = 0.02;                                      % Beam's mass
+beam.t = 0.001;                                     % Beam's thickness
+beam.tl = 0.02;                                     % Thickness of the last element of the beam      
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
-% beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
-beam.rho = 25;
+beam.rho = 1.1678e+03;             % Beam's density
 beam.m = beam.rho*beam.L*beam.b*beam.t;
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
 beam.x = (0:0.001:beam.L);                          % Beam's partition 
@@ -27,8 +25,10 @@ nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof 
 
+tmd_elements = [7 8 9 10];
+
 p = zeros(DOF,1);
-p(DOF-1)= 1;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+p(17)= - 9.81*0.00233356;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 2000;                       % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 
@@ -58,10 +58,9 @@ for e = 1:ne
     dofe = [index(1)*dofn-1 index(1)*dofn...                    % DOF of each element
             index(2)*dofn-1 index(2)*dofn];
             
-    if e == ne                                                  % Changes the thickness of the beam in order to simulate a TMD
+    if ismember(e,tmd_elements)                                                  % Changes the thickness of the beam in order to simulate a TMD
         beam.t = beam.tl;
         beam.Ixx = beam.b*beam.t^3/12;
-        beam.rho = beam.m/beam.L/beam.b/beam.t;
     else
         beam.t = beam.t;
     end
@@ -93,6 +92,18 @@ K_FF = K(free_dof, free_dof);                   % Stiffness matrix of the free-f
 M_FF = M(free_dof, free_dof);                   % Inertia matrix of the free-free DOF
 p_F = p(free_dof);                              % Load's vector in the free DOF
 
+
+%% STATIC SYSTEM
+
+u = zeros(dofn*nn - 1,1);
+
+u_F = K_FF\p_F;
+u(free_dof,1) = u_F;
+
+w = u(1:2:DOF);
+
+figure()
+plot(w)
 %% RESOLUTION OF THE CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 % Dumped is assumed negligible
