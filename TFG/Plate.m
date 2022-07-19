@@ -9,7 +9,7 @@ clc;clear;close all;
 plate.E = 3E9; plate.nu = 0.3;
 plate.a = 0.17; plate.b = 0.17;                             % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
-plate.m = 0.1445;                                           % Plate's mass
+plate.m = 0.135;                                            % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
 plate.rhos = plate.rho*plate.t;                             % Plate's surface density
 plate.I = plate.t^3/12;                                     % Plate's inertia
@@ -31,34 +31,50 @@ iob = 2;     % Bending matrix
 ios = 1;     % Shear matrix
 iof = 1;     % Force vector
 
+%% TMD DIMENSIONS AND DESIGN
+
+tmd.L = 0.01;
+tmd.Leff = 15*tmd.L + tmd.L/2;
+tmd.ml = plate.rho*plate.t*(4*tmd.L)^2;
+tmd.I = tmd.L*plate.t^3/12;
+tmd.t = 0.004:0.001:0.1;
+
+
+w0 = zeros(length(tmd.t),1);
+for i = 1:length(tmd.t)
+     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*tmd.L^2*tmd.t(i)));
+end
+
+figure()
+plot(tmd.t,w0)
+
 %% INPUT DATA AND MESH
 
 ne_x = 17;                                              % Number of elements in X
 ne_y = round(ne_x/plate.a*plate.b);                    % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
-cont = 1;
 empty_elements = zeros(19,19); a = length(empty_elements)^2;
-for i = 1:6     % Elements that are not in the model
-    if i == 6
+for i = 1:15     % Elements that are not in the model
+    if i == 15
         empty = (i*ne_x+2):(i+1)*ne_x-1;
     else
         empty = (i*ne_x+2):2:((i+1)*ne_x-1);
     end
     empty_elements(i,1:length(empty)) = empty;
     
-    j = i + 9;
-    if j == ne_x-2
-        empty = (j*ne_x+2):(j+1)*ne_x-1;
-    else
-        empty = (j*ne_x+2):2:((j+1)*ne_x-1);
-    end
-empty_elements(j,1:length(empty)) = empty;
+%     j = i + 9;               % For more than one row of TMD      
+%     if j == ne_x-2
+%         empty = (j*ne_x+2):(j+1)*ne_x-1;
+%     else
+%         empty = (j*ne_x+2):2:((j+1)*ne_x-1);
+%     end
+% empty_elements(j,1:length(empty)) = empty;
 end
     
 empty_elements = reshape(empty_elements, [a,1]);
 empty_elements = nonzeros(empty_elements);
-empty_elements = 0;                                % Decomment to simulate uniform plate
+%empty_elements = 0;                                % Decomment 8to simulate uniform plate
 tmd_elements = 0;                                  % Elements that act as Tunned Mass Dumper
 
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -77,7 +93,7 @@ P = -1;
 xp = 0.5; yp = 0.5;                                     % Position of the applied load (% of the length)
 
 f = 2000;                                               % Maximum frequency
-vf = (1:f);                                          % Vector of frequencies
+vf = (1:f);                                             % Vector of frequencies
 
 % Location of the load
 ixf = round(xp*plate.a/(plate.a/ne_x)) + 1;
@@ -85,7 +101,7 @@ iyf = round(yp*plate.b/(plate.b/ne_y)) + 1;
 node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free), cc (clamped) or ss (simply supported)
-solve = 'ss';
+solve = 'ff';
 
 %% CONNECTIVITY
 
@@ -313,13 +329,11 @@ ylabel('y (m)')
 zlabel('z (mm)')
 title('Vertical displacement on the deformed mesh (mm)')
 
-%%
 figure()
 plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
-%D_FF = zeros(length(fdof),length(fdof),f);                    % Dynamic stiffness matrix of free DOF
 q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
 
 for i = 1:f
@@ -330,10 +344,18 @@ end
 
 Q0 = squeeze(q0(511,:));
 
-[v,d] = eigs(K_FF,M_FF);
+[v,d] = eig(K_FF,M_FF);
 [W,order] = sort(sum(sqrt(d)./2./pi));
-W_ = diag(W);
+W = diag(W); W = [W(5,5) W(6,6) W(7,7) W(8,8)];
 V = v(:,order);
+
+%% VALIDATION (LEISSA)
+
+table_ss = [19.7329 49.348 49.348 78.9568];        % Leissa values for a ss plate
+freq_ss = table_ss/plate.Leissa/2/pi;
+
+table_ff = [13.489 19.789 24.432 35.024];          % Leissa values for a ff plate
+freq_ff = table_ff/plate.Leissa/2/pi;
 
 %% PLOTS OF DYNAMIC SYSTEM
 
