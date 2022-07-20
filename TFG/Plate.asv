@@ -360,12 +360,12 @@ PSI_g(fdof,:) = PSI_f;
     %% EIGENMDOES (3D)
 figure('Color','white','units','normalized','outerposition',[0 0 1 1])
 modestoview = 4;
-Ts = 1./f0(9:modestoview+4);
+Ts = 1./f0(5:modestoview+4);
 vt = [0:min(Ts)/20:1*min(Ts)];
 % Initialization of the required matrices
-for t=1:length(vt)
-    for c=9:modestoview+4
-        s(c-8) = subplot(2,modestoview/2,c-8);
+for t=1:1
+    for c=5:modestoview+4
+        s(c-4) = subplot(2,modestoview/2,c-4);
         hold on
         out = PSI_g(1:3:end,c);
         maxout = max(max(abs(out)));
@@ -382,7 +382,8 @@ for t=1:length(vt)
             end
             profile = profile/maxout*0.1*max(plate.a,plate.b);
             fill3(X,Y,profile*sin(2*pi()*f0(c)*vt(t)),profile*sin(2*pi()*f0(c)*vt(t)))
-%           colorbar
+            fill3(X,Y,profile,prof)
+%           colorbarile
             axis equal
             xlabel('x (m)')
             ylabel('y (m)')
