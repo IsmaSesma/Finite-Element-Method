@@ -102,7 +102,7 @@ empty_elements = 0; beam_elements = 0; tmd_elements = 0;
 
 beam_elements = setxor(beam_elements,tmd_elements);
 acc_elements = [1 280 281];                          % Elements where the accelerometers are placed (nodes 1 and 315)
-acc_elements = [0 0 0];
+
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
 PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
@@ -117,7 +117,7 @@ vdof = (1:DOF)';                                        % Vector containing all 
 
 % Load applied
 P = -1;                                          
-xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
+xp = 0.5; yp = 0.5;                                     % Position of the applied load (% of the length)
 
 f = 2000;                                               % Maximum frequency
 vf = (1:f);                                             % Vector of frequencies
@@ -396,17 +396,10 @@ end
 %% PLOTS OF DYNAMIC SYSTEM
 
 % Amplitude vs Frequency
-Q0 = squeeze(q0(943,:));
-Q1 = squeeze(q0(1,:));
+Q0 = squeeze(q0(315,:));
 figure()
-semilogy(vf,abs(Q0))
+semilogy(vf/244,abs(Q0))
 title("Amplitude Bode Diagram")
-
-figure()
-semilogy(vf,abs(Q1))
-
-figure()
-semilogy(vf,abs(Q0./Q1))
 
 % Angular offset vs Frequency
 figure()
