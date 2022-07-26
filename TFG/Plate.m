@@ -15,8 +15,9 @@ plate.rhos = plate.rho*plate.t;                             % Plate's surface de
 plate.I = plate.t^3/12;                                     % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
 plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);
-plate.tmd = 0.004;                                          % Thickness of the TMD
+plate.beam = 0.001;
 plate.Leissa = plate.a^2*sqrt(plate.rhos/plate.D);          % Parameter defined in Leissa
+acc_mass = 0.009;                                           % Mass of the accelerometers
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -35,24 +36,29 @@ iof = 1;     % Force vector
 
 tmd.L = 0.01;                               % Element length
 tmd.Leff = 3*tmd.L + 2*tmd.L/2;              % Effective length
-tmd.ml = plate.rho*0.0015*(3*tmd.L)^2;     % Mass of the tongue
-tmd.I = tmd.L*0.0015^3/12;
+tmd.ml = plate.rho*plate.beam*(2*tmd.L)^2;     % Mass of the tongue
+tmd.I = tmd.L*plate.beam^3/12;
 tmd.t = 0.004:0.001:0.1;                
 
 w0 = zeros(length(tmd.t),1);
 for i = 1:length(tmd.t)
-     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*(2*tmd.L)^2*tmd.t(i)));
+     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*(tmd.L)^2*tmd.t(i)));
 end
 
 figure()
+title('Election of tip width')
+xlabel('Width of the extra mass')
+ylabel('Resonance frequency')
 plot(tmd.t,w0)
 
+plate.tmd = 0.1;
 %% INPUT DATA AND MESH
 
 ne_x = 17;                                              % Number of elements in X
 ne_y = round(ne_x/plate.a*plate.b);                    % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
+% Mesh to mitigate first mode of the free-free beam
 empty_elements = zeros(19,19); a = length(empty_elements)^2;
 for i = 1:6                  % Elements that are not in the model
     if i == 6
@@ -68,14 +74,36 @@ for i = 1:6                  % Elements that are not in the model
     else
         empty = (j*ne_x+2):2:((j+1)*ne_x-1);
     end
-empty_elements(j,1:length(empty)) = empty;
+    empty_elements(j,1:length(empty)) = empty;
 end
+
+% Elements of the beams
+beam_elements = zeros();        
+for i = 1:5               
+ 
+    empty = (i*ne_x+3):2:((i+1)*ne_x-2);
+    beam_elements(i,1:length(empty)) = empty;
     
+    j = i + 9;                
+    empty = (j*ne_x+3):2:((j+1)*ne_x-2);
+    beam_elements(j,1:length(empty)) = empty;
+end
+
 empty_elements = reshape(empty_elements, [a,1]);
 empty_elements = nonzeros(empty_elements);
-empty_elements = 0;                                % Decomment to simulate uniform plate
-tmd_elements = 0;                                  % Elements that act as Tunned Mass Dumper
+beam_elements = nonzeros(beam_elements);
 
+% Elements that act as Tunned Mass Dumper
+tmd_elements = [beam_elements(4:5:69),beam_elements(5:5:70)];
+tmd_elements = reshape(tmd_elements,[28,1]);
+
+% Decomment to simulate uniform plate
+empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
+
+beam_elements = setxor(beam_elements,tmd_elements);
+acc_elements = [1 280 281];                          % Elements where the accelerometers are placed (nodes 1 and 315)
+
+% General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
 PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
 
@@ -159,13 +187,23 @@ for e = 1:ne
         Me = zeros(dofn*nne);
     else
 
-        if ismember(e,tmd_elements)                                     % Recalculate Di for the elements with extra mass
+        if ismember(e,beam_elements)                                     % Recalculate Di for the elements with less mass
+            plate.t = plate.beam;
+            plate.I = plate.t^3/12;
+            D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];
+            D_s = plate.G*plate.t*5/6*[1 0; 0 1];
+
+        elseif ismember(e,tmd_elements)                                     % Recalculate Di for the elements with extra mass
             plate.t = plate.tmd;
             plate.I = plate.t^3/12;
             D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];
             D_s = plate.G*plate.t*5/6*[1 0; 0 1];
+
         else
             plate.t = plate.t;
+            plate.I = plate.t^3/12;
+            D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];
+            D_s = plate.G*plate.t*5/6*[1 0; 0 1];
         end
 
         % Bending matrix
@@ -202,7 +240,20 @@ for e = 1:ne
         % Inertia matrix (lumped mass)
         me = plate.rho*plate.t*xe*ye;                           % Mass of the element
         Me = zeros(dofn*nne);
-        Me(1,1) = me/4; Me (4,4) = me/4; Me(7,7) = me/4; Me(10,10) = me/4;
+%         Me(1,1) = me/4; Me (4,4) = me/4; Me(7,7) = me/4; Me(10,10) = me/4;
+        if isequal(e,acc_elements(1))
+            Me(1,1) = me/4 + acc_mass;
+
+        elseif isequal(e,acc_elements(2))
+            Me(7,7) = me/4 + acc_mass;
+            
+        elseif isequal(e,acc_elements(3))
+            Me(10,10) = me/4 + acc_mass;
+
+        else
+            Me(1,1) = me/4; Me (4,4) = me/4; Me(7,7) = me/4; Me(10,10) = me/4;
+
+        end
     end
 
         % Stiffness matrix of the element
@@ -342,30 +393,36 @@ for i = 1:f
     q0(fdof,i) = q0_F(:,i);
 end
 
-Q0 = squeeze(q0(511,:));
+%% PLOTS OF DYNAMIC SYSTEM
 
-%%
+% Amplitude vs Frequency
+Q0 = squeeze(q0(315,:));
+figure()
+semilogy(vf,abs(Q0))
+title("Amplitude Bode Diagram")
+
+% Angular offset vs Frequency
+figure()
+plot(vf,unwrap(angle(Q0)))
 
 [PSI,d] = eig(K_FF,M_FF);
 [f0,order] = sort(sqrt(sum(d,1))/2./pi);
 disp('Natural frequencies:')
 disp(['   ' num2str(f0(5)) ' Hz, ' num2str(f0(6)) ' Hz, ' num2str(f0(7)) ' Hz, ' num2str(f0(8)) ' Hz'])
-%f0 = diag(f0); f0 = [f0(5,5) f0(6,6) f0(7,7) f0(8,8)];
 PSI_f = PSI(:,order);
 PSI_g = zeros(DOF,size(PSI_f,2));
 PSI_g(fdof,:) = PSI_f;
 
-%% ************************************************************************
-%                             PLOTTING
-    %% EIGENMDOES (3D)
+%% PLOTS OF SHAPE MODES
+
 figure('Color','white','units','normalized','outerposition',[0 0 1 1])
-modestoview = 4;
-Ts = 1./f0(9:modestoview+4);
-vt = [0:min(Ts)/20:1*min(Ts)];
+modestoview = 8;
+Ts = 1./f0(5:modestoview+4);
+vt = (0:min(Ts)/20:1*min(Ts)); 
 % Initialization of the required matrices
 for t=1:length(vt)
-    for c=9:modestoview+4
-        s(c-8) = subplot(2,modestoview/2,c-8);
+    for c=5:modestoview+4
+        s(c-4) = subplot(2,modestoview/2,c-4);
         hold on
         out = PSI_g(1:3:end,c);
         maxout = max(max(abs(out)));
@@ -407,13 +464,3 @@ freq_ss = table_ss/plate.Leissa/2/pi;
 table_ff = [13.489 19.789 24.432 35.024];          % Leissa values for a ff plate
 freq_ff = table_ff/plate.Leissa/2/pi;
 
-%% PLOTS OF DYNAMIC SYSTEM
-
-% Amplitude vs Frequency
-figure()
-semilogy(vf,abs(Q0))
-title("Amplitude Bode Diagram")
-
-% Angular offset vs Frequency
-figure()
-plot(vf,unwrap(angle(Q0)))
