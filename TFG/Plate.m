@@ -54,55 +54,63 @@ plot(tmd.t,w0)
 plate.tmd = 0.1;
 %% INPUT DATA AND MESH
 
-ne_x = 17;                                              % Number of elements in X
-ne_y = round(ne_x/plate.a*plate.b);                    % Number of elements in Y (keep the elements as square as possible)
+ne_x = 34;                                              % Number of elements in X
+ne_y = round(ne_x/plate.a*plate.b);                     % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
 % Mesh to mitigate first mode of the free-free beam
 empty_elements = zeros(19,19); a = length(empty_elements)^2;
-for i = 1:6                  % Elements that are not in the model
-    if i == 6
-        empty = (i*ne_x+2):(i+1)*ne_x-1;
+for i = 1:11                  % Elements that are not in the model
+    if i == 11
+        empty = (i*ne_x+2):((i+1)*ne_x-5);
+        no_empty(:,1) = (i*ne_x+6):6:((i+1)*ne_x-9);
+        no_empty(:,2) = (i*ne_x+7):6:((i+1)*ne_x-9);
+
+        empty = setxor(empty,no_empty);
     else
-        empty = (i*ne_x+2):2:((i+1)*ne_x-1);
+        empty = (i*ne_x+2):3:((i+1)*ne_x-5);
     end
     empty_elements(i,1:length(empty)) = empty;
     
-    j = i + 9;               % For more than one row of TMD      
+    j = i + 21;               % For more than one row of TMD      
     if j == ne_x-2
-        empty = (j*ne_x+2):(j+1)*ne_x-1;
+        empty = (j*ne_x+2):((j+1)*ne_x-5);
+        no_empty(:,1) = (j*ne_x+6):6:((j+1)*ne_x-9);
+        no_empty(:,2) = (j*ne_x+7):6:((j+1)*ne_x-9);
+
+        empty = setxor(empty,no_empty);
     else
-        empty = (j*ne_x+2):2:((j+1)*ne_x-1);
+        empty = (j*ne_x+2):3:((j+1)*ne_x-5);
     end
     empty_elements(j,1:length(empty)) = empty;
 end
 
-% Elements of the beams
-beam_elements = zeros();        
-for i = 1:5               
- 
-    empty = (i*ne_x+3):2:((i+1)*ne_x-2);
-    beam_elements(i,1:length(empty)) = empty;
-    
-    j = i + 9;                
-    empty = (j*ne_x+3):2:((j+1)*ne_x-2);
-    beam_elements(j,1:length(empty)) = empty;
-end
+% % Elements of the beams
+% beam_elements = zeros();        
+% for i = 1:5               
+%  
+%     empty = (i*ne_x+3):2:((i+1)*ne_x-2);
+%     beam_elements(i,1:length(empty)) = empty;
+%     
+%     j = i + 9;                
+%     empty = (j*ne_x+3):2:((j+1)*ne_x-2);
+%     beam_elements(j,1:length(empty)) = empty;
+% end
+% 
+% empty_elements = reshape(empty_elements, [a,1]);
+% empty_elements = nonzeros(empty_elements);
+% beam_elements = nonzeros(beam_elements);
 
-empty_elements = reshape(empty_elements, [a,1]);
-empty_elements = nonzeros(empty_elements);
-beam_elements = nonzeros(beam_elements);
-
-% Elements that act as Tunned Mass Dumper
-tmd_elements = [beam_elements(4:5:69),beam_elements(5:5:70)];
-tmd_elements = reshape(tmd_elements,[28,1]);
+% % Elements that act as Tunned Mass Dumper
+% tmd_elements = [beam_elements(4:5:69),beam_elements(5:5:70)];
+% tmd_elements = reshape(tmd_elements,[28,1]);
 
 % Decomment to simulate uniform plate
-empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
+% empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
 
-beam_elements = setxor(beam_elements,tmd_elements);
-acc_elements = [1 280 281];                          % Elements where the accelerometers are placed (nodes 1 and 315)
-acc_elements = [0 0 0];
+% beam_elements = setxor(beam_elements,tmd_elements);
+acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed (nodes 1 and 315)
+% acc_elements = [0 0 0];
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
 PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
@@ -245,10 +253,14 @@ for e = 1:ne
             Me(1,1) = me/4 + acc_mass;
 
         elseif isequal(e,acc_elements(2))
-            Me(7,7) = me/4 + acc_mass;
+            Me(10,10) = me/4 + acc_mass;
             
         elseif isequal(e,acc_elements(3))
-            Me(10,10) = me/4 + acc_mass;
+            Me(7,7) = me/4 + acc_mass/2;
+            Me(10,10) = me/4 + acc_mass/2;
+            
+        elseif isequal(e,acc_elements(4))
+            Me(7,7) = me/4 + acc_mass/2;
 
         else
             Me(1,1) = me/4; Me (4,4) = me/4; Me(7,7) = me/4; Me(10,10) = me/4;
@@ -328,89 +340,89 @@ thetax = u(2:3:DOF);
 thetay = u(3:3:DOF);
 
 %% PLOTS OF STATIC PROBLEM
-
-% Plots the displacement and angles of the plate in 2D
-figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
-t = tiledlayout(1,3);
-t.TileSpacing = 'compact';
-t.Padding = 'compact';
-labels= {'Vertical Displacement (mm)','\theta_x (º)','\theta_y (º)'};
-% Initialization of the required matrices
-out = [w,rad2deg(thetax),rad2deg(thetay)];
-nd = zeros();
-for c=1:3
-    nexttile(c)
-    X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-    Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-    profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-    for iel=1:length(structure.mesh.elements.nodes)   
-        for i=1:size(structure.mesh.elements.nodes,2)
-        nd(i)=structure.mesh.elements.nodes(iel,i);       
-        X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
-        Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
-        end   
-        profile(:,iel) = out(nd',c) ;         
-    end
-    fill(X,Y,profile)
-    colorbar
-    axis equal
-    xlabel('x (m)')
-    ylabel('y (m)')
-    title(labels{c})
-end
-
-% Plots the 3D plate deformed
-figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
-X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-Z = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-for iel=1:length(structure.mesh.elements.nodes)   
-    for i=1:size(structure.mesh.elements.nodes,2)
-    nd(i)=structure.mesh.elements.nodes(iel,i);       
-    X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
-    Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
-    end
-    Z(:,iel)=w(nd);                 
-end
-fill3(X,Y,Z*1000,Z*1000)
-colorbar
-xlabel('x (m)')
-ylabel('y (m)')
-zlabel('z (mm)')
-title('Vertical displacement on the deformed mesh (mm)')
-
-figure()
-plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
+% 
+% % Plots the displacement and angles of the plate in 2D
+% figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
+% t = tiledlayout(1,3);
+% t.TileSpacing = 'compact';
+% t.Padding = 'compact';
+% labels= {'Vertical Displacement (mm)','\theta_x (º)','\theta_y (º)'};
+% % Initialization of the required matrices
+% out = [w,rad2deg(thetax),rad2deg(thetay)];
+% nd = zeros();
+% for c=1:3
+%     nexttile(c)
+%     X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+%     Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+%     profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+%     for iel=1:length(structure.mesh.elements.nodes)   
+%         for i=1:size(structure.mesh.elements.nodes,2)
+%         nd(i)=structure.mesh.elements.nodes(iel,i);       
+%         X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
+%         Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
+%         end   
+%         profile(:,iel) = out(nd',c) ;         
+%     end
+%     fill(X,Y,profile)
+%     colorbar
+%     axis equal
+%     xlabel('x (m)')
+%     ylabel('y (m)')
+%     title(labels{c})
+% end
+% 
+% % Plots the 3D plate deformed
+% figure('Color','white','units','normalized','outerposition',[0.3 0.3 0.5 0.6])
+% X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+% Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+% Z = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+% profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+% for iel=1:length(structure.mesh.elements.nodes)   
+%     for i=1:size(structure.mesh.elements.nodes,2)
+%     nd(i)=structure.mesh.elements.nodes(iel,i);       
+%     X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
+%     Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
+%     end
+%     Z(:,iel)=w(nd);                 
+% end
+% fill3(X,Y,Z*1000,Z*1000)
+% colorbar
+% xlabel('x (m)')
+% ylabel('y (m)')
+% zlabel('z (mm)')
+% title('Vertical displacement on the deformed mesh (mm)')
+% 
+% figure()
+% plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
-
-q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
-
-for i = 1:f
-    D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
-    q0_F(:,i) = D_FF(:,:)\F_F;
-    q0(fdof,i) = q0_F(:,i);
-end
+% 
+% q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+% 
+% for i = 1:f
+%     D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
+%     q0_F(:,i) = D_FF(:,:)\F_F;
+%     q0(fdof,i) = q0_F(:,i);
+% end
 
 %% PLOTS OF DYNAMIC SYSTEM
-
-% Amplitude vs Frequency
-Q0 = squeeze(q0(943,:));
-Q1 = squeeze(q0(1,:));
-figure()
-semilogy(vf,abs(Q0))
-title("Amplitude Bode Diagram")
-
-figure()
-semilogy(vf,abs(Q1))
-
-figure()
-semilogy(vf,abs(Q0./Q1))
-
-% Angular offset vs Frequency
-figure()
-plot(vf,unwrap(angle(Q0)))
+% 
+% % Amplitude vs Frequency
+% Q0 = squeeze(q0(943,:));
+% Q1 = squeeze(q0(1,:));
+% figure()
+% semilogy(vf,abs(Q0))
+% title("Amplitude Bode Diagram")
+% 
+% figure()
+% semilogy(vf,abs(Q1))
+% 
+% figure()
+% semilogy(vf,abs(Q0./Q1))
+% 
+% % Angular offset vs Frequency
+% figure()
+% plot(vf,unwrap(angle(Q0)))
 
 [PSI,d] = eig(K_FF,M_FF);
 [f0,order] = sort(sqrt(sum(d,1))/2./pi);
@@ -422,47 +434,47 @@ PSI_g(fdof,:) = PSI_f;
 
 %% PLOTS OF SHAPE MODES
 
-figure('Color','white','units','normalized','outerposition',[0 0 1 1])
-modestoview = 8;
-Ts = 1./f0(5:modestoview+4);
-vt = (0:min(Ts)/20:1*min(Ts)); 
+% figure('Color','white','units','normalized','outerposition',[0 0 1 1])
+% modestoview = 8;
+% Ts = 1./f0(5:modestoview+4);
+% vt = (0:min(Ts)/20:1*min(Ts)); 
 % Initialization of the required matrices
-for t=1:length(vt)
-    for c=5:modestoview+4
-        s(c-4) = subplot(2,modestoview/2,c-4);
-        hold on
-        out = PSI_g(1:3:end,c);
-        maxout = max(max(abs(out)));
-        X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-        Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-        profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-            for iel=1:length(structure.mesh.elements.nodes)   
-                for i=1:size(structure.mesh.elements.nodes,2)
-                    nd(i)=structure.mesh.elements.nodes(iel,i);       
-                    X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
-                    Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
-                end   
-                profile(:,iel) = out(nd');         
-            end
-            profile = profile/maxout*0.1*max(plate.a,plate.b);
-            fill3(X,Y,profile*sin(2*pi()*f0(c)*vt(t)),profile*sin(2*pi()*f0(c)*vt(t)))
+% for t=1:length(vt)
+%     for c=5:modestoview+4
+%         s(c-4) = subplot(2,modestoview/2,c-4);
+%         hold on
+%         out = PSI_g(1:3:end,c);
+%         maxout = max(max(abs(out)));
+%         X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+%         Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+%         profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+%             for iel=1:length(structure.mesh.elements.nodes)   
+%                 for i=1:size(structure.mesh.elements.nodes,2)
+%                     nd(i)=structure.mesh.elements.nodes(iel,i);       
+%                     X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
+%                     Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
+%                 end   
+%                 profile(:,iel) = out(nd');         
+%             end
+%             profile = profile/maxout*0.1*max(plate.a,plate.b);
+%             fill3(X,Y,profile*sin(2*pi()*f0(c)*vt(t)),profile*sin(2*pi()*f0(c)*vt(t)))
 %           colorbar
-            axis equal
-            xlabel('x (m)')
-            ylabel('y (m)')
-            view(30,30)
-            set(gca,'ZLim',[-0.1*max(plate.a,plate.b),0.1*max(plate.a,plate.b)])
-            title(['Mode ' num2str(c) ', f_0=' num2str(round(f0(c),1)) ' Hz'])
-            set(gca,'FontSize',14)
-    end
-    drawnow;
-    if t<length(vt)
-        for m = 1:modestoview
-            cla(s(m));
-        end
-    end            
-end
-
+%             axis equal
+%             xlabel('x (m)')
+%             ylabel('y (m)')
+%             view(30,30)
+%             set(gca,'ZLim',[-0.1*max(plate.a,plate.b),0.1*max(plate.a,plate.b)])
+%             title(['Mode ' num2str(c) ', f_0=' num2str(round(f0(c),1)) ' Hz'])
+%             set(gca,'FontSize',14)
+%     end
+%     drawnow;
+%     if t<length(vt)
+%         for m = 1:modestoview
+%             cla(s(m));
+%         end
+%     end            
+% end
+% 
 %% VALIDATION (LEISSA)
 
 table_ss = [19.7329 49.348 49.348 78.9568];        % Leissa values for a ss plate
