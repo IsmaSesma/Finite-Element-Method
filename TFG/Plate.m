@@ -15,7 +15,7 @@ plate.rhos = plate.rho*plate.t;                             % Plate's surface de
 plate.I = plate.t^3/12;                                     % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
 plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);
-plate.beam = 0.001;
+plate.beam_width = 0.001;                                   % Width of the tongue                               
 plate.Leissa = plate.a^2*sqrt(plate.rhos/plate.D);          % Parameter defined in Leissa
 acc_mass = 0.009;                                           % Mass of the accelerometers
 
@@ -34,10 +34,10 @@ iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
 
-tmd.L = 0.01;                               % Element length
-tmd.Leff = 3*tmd.L + 2*tmd.L/2;              % Effective length
-tmd.ml = plate.rho*plate.beam*(2*tmd.L)^2;     % Mass of the tongue
-tmd.I = tmd.L*plate.beam^3/12;
+tmd.L = 0.005;                                               % Element length
+tmd.Leff = 6*tmd.L + 4*tmd.L/2;                              % Effective length
+tmd.ml = plate.rho*plate.beam_width*(6*tmd.L)*(2*tmd.L);     % Mass of the tongue
+tmd.I = tmd.L*plate.beam_width^3/12;
 tmd.t = 0.004:0.001:0.1;                
 
 w0 = zeros(length(tmd.t),1);
@@ -52,6 +52,7 @@ ylabel('Resonance frequency')
 plot(tmd.t,w0)
 
 plate.tmd = 0.1;
+
 %% INPUT DATA AND MESH
 
 ne_x = 34;                                              % Number of elements in X
@@ -59,7 +60,7 @@ ne_y = round(ne_x/plate.a*plate.b);                     % Number of elements in 
 dofn = 3;                                               % DOF per node
 
 % Mesh to mitigate first mode of the free-free beam
-empty_elements = zeros(19,19); a = length(empty_elements)^2;
+empty_elements = zeros(19,19);
 for i = 1:11                  % Elements that are not in the model
     if i == 11
         empty = (i*ne_x+2):((i+1)*ne_x-5);
@@ -72,7 +73,7 @@ for i = 1:11                  % Elements that are not in the model
     end
     empty_elements(i,1:length(empty)) = empty;
     
-    j = i + 21;               % For more than one row of TMD      
+    j = i + 21;               % Second row of TMD      
     if j == ne_x-2
         empty = (j*ne_x+2):((j+1)*ne_x-5);
         no_empty(:,1) = (j*ne_x+6):6:((j+1)*ne_x-9);
@@ -85,23 +86,33 @@ for i = 1:11                  % Elements that are not in the model
     empty_elements(j,1:length(empty)) = empty;
 end
 
-% % Elements of the beams
-% beam_elements = zeros();        
-% for i = 1:5               
-%  
-%     empty = (i*ne_x+3):2:((i+1)*ne_x-2);
-%     beam_elements(i,1:length(empty)) = empty;
-%     
-%     j = i + 9;                
-%     empty = (j*ne_x+3):2:((j+1)*ne_x-2);
-%     beam_elements(j,1:length(empty)) = empty;
-% end
-% 
-% empty_elements = reshape(empty_elements, [a,1]);
-% empty_elements = nonzeros(empty_elements);
-% beam_elements = nonzeros(beam_elements);
+% Elements of the beams
+beam_elements = zeros(); 
+for i = 1:10               
+    beam = (i*ne_x+3):((i+1)*ne_x-6);
+    empty = (i*ne_x+5):3:((i+1)*ne_x-8);
+    no_beam(:,1) = (i*ne_x+6):6:((i+1)*ne_x-10);
+    no_beam(:,2) = (i*ne_x+7):6:((i+1)*ne_x-9);
+ 
+    beam = setxor(beam,no_beam);
+    beam = setxor(beam,empty);
+    beam_elements(i,1:length(beam)) = beam;
+    
+    j = i + 21;                
+    beam = (j*ne_x+3):((j+1)*ne_x-6);
+    empty = (j*ne_x+5):3:((j+1)*ne_x-8);
+    no_beam(:,1) = (j*ne_x+6):6:((j+1)*ne_x-10);
+    no_beam(:,2) = ((j*ne_x+7):6:((j+1)*ne_x-9));
 
-% % Elements that act as Tunned Mass Dumper
+    beam = setxor(beam,no_beam);
+    beam = setxor(beam,empty);
+    beam_elements(j,1:length(beam)) = beam;
+end
+
+empty_elements = nonzeros(empty_elements);
+beam_elements = nonzeros(beam_elements);
+
+% Elements that act as Tunned Mass Dumper
 % tmd_elements = [beam_elements(4:5:69),beam_elements(5:5:70)];
 % tmd_elements = reshape(tmd_elements,[28,1]);
 
@@ -109,7 +120,7 @@ end
 % empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
 
 % beam_elements = setxor(beam_elements,tmd_elements);
-acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed (nodes 1 and 315)
+acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
 % acc_elements = [0 0 0];
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -260,7 +271,7 @@ for e = 1:ne
             Me(10,10) = me/4 + acc_mass/2;
             
         elseif isequal(e,acc_elements(4))
-            Me(7,7) = me/4 + acc_mass/2;
+            Me(7,7) = me/4 + acc_mass;
 
         else
             Me(1,1) = me/4; Me (4,4) = me/4; Me(7,7) = me/4; Me(10,10) = me/4;
