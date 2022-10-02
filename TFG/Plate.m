@@ -1,5 +1,6 @@
 % ***********************************************************************
 %           FEM MODEL OF A PLATE USING RECTANGULAR ELEMENTS 
+%                 Ismael Rodríguez Sesma, ETSIAE
 % ***********************************************************************
 
 clc;clear;close all;
@@ -7,9 +8,9 @@ clc;clear;close all;
 %% MASIC AND GEOMETRIC DATA
 
 plate.E = 3E9; plate.nu = 0.3;
-plate.a = 0.17; plate.b = 0.17;                             % Plate's dimensions
+plate.a = 0.169; plate.b = 0.168;                             % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
-plate.m = 0.135;                                            % Plate's mass
+plate.m = 0.130;                                            % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
 plate.rhos = plate.rho*plate.t;                             % Plate's surface density
 plate.I = plate.t^3/12;                                     % Plate's inertia
@@ -33,25 +34,25 @@ ios = 1;     % Shear matrix
 iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
-
-tmd.L = 0.005;                                               % Element length
-tmd.Leff = 6*tmd.L + 4*tmd.L/2;                              % Effective length
-tmd.ml = plate.rho*plate.beam_width*(6*tmd.L)*(2*tmd.L);     % Mass of the tongue
-tmd.I = tmd.L*plate.beam_width^3/12;
-tmd.t = 0.004:0.001:0.1;                
-
-w0 = zeros(length(tmd.t),1);
-for i = 1:length(tmd.t)
-     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*(tmd.L)^2*tmd.t(i)));
-end
-
-figure()
-title('Election of tip width')
-xlabel('Width of the extra mass')
-ylabel('Resonance frequency')
-plot(tmd.t,w0)
-
-plate.tmd = 0.1;
+% 
+% tmd.L = 0.005;                                               % Element length
+% tmd.Leff = 6*tmd.L + 4*tmd.L/2;                              % Effective length
+% tmd.ml = plate.rho*plate.beam_width*(6*tmd.L)*(2*tmd.L);     % Mass of the tongue
+% tmd.I = tmd.L*plate.beam_width^3/12;
+% tmd.t = 0.004:0.001:0.1;                
+% 
+% w0 = zeros(length(tmd.t),1);
+% for i = 1:length(tmd.t)
+%      w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*(tmd.L)^2*tmd.t(i)));
+% end
+% 
+% figure()
+% title('Election of tip width')
+% xlabel('Width of the extra mass')
+% ylabel('Resonance frequency')
+% plot(tmd.t,w0)
+% 
+% plate.tmd = 0.1;
 
 %% INPUT DATA AND MESH
 
@@ -117,7 +118,7 @@ beam_elements = nonzeros(beam_elements);
 % tmd_elements = reshape(tmd_elements,[28,1]);
 
 % Decomment to simulate uniform plate
-% empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
+empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
 
 % beam_elements = setxor(beam_elements,tmd_elements);
 acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed

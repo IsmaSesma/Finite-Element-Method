@@ -1,17 +1,18 @@
 % *************************************************************
 %           FEM DYNAMIC ANALYSIS OF 1D FREE-FREE BEAM 
+%                 Ismael Rodríguez Sesma, ETSIAE
 % *************************************************************
 
- clc;clear;close all;
+clc;clear;close all;
 set(0,'DefaultFigureVisible','on')
 
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 2E9;                                       % Elastic modulus
-beam.L = 0.1695;                                       % Beam's length
-beam.b = 0.0205;                                      % Beam's width
-beam.t = 0.0041;                                     % Beam's thickness
-beam.m = 0.014;                                      % Beam's mass
+beam.E = 210E9;                                       % Elastic modulus
+beam.L = 0.7;                                       % Beam's length
+beam.b = 0.016;                                      % Beam's width
+beam.t = 0.016;                                     % Beam's thickness
+beam.m = 1.4;                                      % Beam's mass
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
@@ -25,10 +26,11 @@ a = 1E-6; b = 1E-6;                                 % Propotional damping coeffi
 ne = 100;                       % Number of elements to be used (determined by wavelenght and propagation speed of the wave in the beam)
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
-DOF = dofn*nn;                  % Total dof
+DOF = dofn*nn;                  % Total dof;                  
+fdof = (3:DOF);                 % Free dof
 
 p = zeros(DOF,1);
-p(DOF/2)= 1;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+p(DOF-1)= 50;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 2000;                       % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 
@@ -85,21 +87,27 @@ for e = 1:ne
     M_lumped(dofe,dofe) = M_lumped(dofe,dofe) + Mle;
 end
 
+K = K(fdof,fdof);
+M = M_consist(fdof,fdof);
+p = p(fdof);
+
+u = K\p;
+
 %% RESOLUTION OF THE CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 % Dumped is assumed negligible
-
+DOF = 200;
 D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
 q0_c = zeros(DOF,F); q0_l = zeros(DOF,F);
 q_c = zeros(DOF,F); q_l = zeros(DOF,F);
 
 for i = 1:F           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
 
-    D_c(:,:,i) = (K - (2*pi*i)^2*M_consist);                                              % Dynamic stiffness matrix with consistent mass matrix
+    D_c(:,:,i) = (K - (2*pi*i)^2*M);                                              % Dynamic stiffness matrix with consistent mass matrix
     q0_c(:,i) = D_c(:,:,i)\p;                                                             % Displacement's amplitudes with consistent mass matrix
 
-    D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);                                               % Dynamic stiffness matrix with lumped mass matrix
-    q0_l(:,i) = D_l(:,:,i)\p;                                                             % Displacement's amplitudes with lumped mass matrix
+%     D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);                                               % Dynamic stiffness matrix with lumped mass matrix
+%     q0_l(:,i) = D_l(:,:,i)\p;                                                             % Displacement's amplitudes with lumped mass matrix
 
 end
 
@@ -148,7 +156,7 @@ xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
 fprintf('Conservative system finished\n');
 
 
-% return
+ return
 %% PROPORTIONAL DAMPING MODEL ([F] = α[M] + β[K])
 
 % Dumping matrix with consistent mass matrix

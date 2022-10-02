@@ -4,7 +4,7 @@ clc;clear;close all;
 format short
 %% Datos de entrada
 
-E = 100E9;  nu = 0.3; L = 1.422; a0 = 0.094; t = a0/3; q0 = 2500; P = -2406;
+E = 210E9;  nu = 0.3; L = 0.7; a0 = 0.016; t = a0; q0 = 0; P = -50;
 
 %% Datos Integración Numérica
 
