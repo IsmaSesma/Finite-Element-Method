@@ -13,6 +13,7 @@ plate.t = 0.004;                                            % Plate's thickness
 plate.m = 0.130;                                            % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
 plate.rhos = plate.rho*plate.t;                             % Plate's surface density
+plate.rhol = plate.rhos*plate.b;
 plate.I = plate.t^3/12;                                     % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
 plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);
@@ -121,8 +122,10 @@ beam_elements = nonzeros(beam_elements);
 empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
 
 % beam_elements = setxor(beam_elements,tmd_elements);
-acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
-% acc_elements = [0 0 0];
+% acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
+thread_nodes = [1124 1155];                                % Nodes where the thread is placed
+thread_DOF = 3*thread_nodes;
+acc_elements = [0 0 0 0];
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
 PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
@@ -149,6 +152,8 @@ node_p = (ne_x + 1)*(iyf - 1) + ixf;
 
 % Boundary conditions for the plate: ff (free-free), cc (clamped) or ss (simply supported)
 solve = 'ff';
+
+fprintf('Mesh finished\n');
 
 %% CONNECTIVITY
 
@@ -336,20 +341,24 @@ switch solve
 
 end           
 
- % Solve the system
+%  % Solve the system
  K_FF = K(fdof,fdof);         % Stiffness matrix in free DOF
+ K_FF_testK_FF(thread_DOF(1), thread_DOF(1)) = K_FF(thread_DOF(1), thread_DOF(1)) + 46E3;
+ K_FF_testK_FF(thread_DOF(2), thread_DOF(2)) = K_FF(thread_DOF(2), thread_DOF(2)) + 46E3;
  %K_FR = K(fdof,rdof);
  M_FF = M(fdof,fdof);         % Mass matrix in free DOF
  F_F = F(fdof,1);                % Force vector in free DOF
-     
- u_F = K_FF\F_F;                    % Displacements in free DOF
- u(fdof,1) = u_F;
-        
- %F_R = K_FR'*u_F;                   % Reactions in supports 
 
-w = u(1:3:DOF);
-thetax = u(2:3:DOF);
-thetay = u(3:3:DOF);
+ fprintf('Matrices computed\n');
+     
+%  u_F = K_FF\F_F;                    % Displacements in free DOF
+%  u(fdof,1) = u_F;
+%         
+%  %F_R = K_FR'*u_F;                   % Reactions in supports 
+% 
+% w = u(1:3:DOF);
+% thetax = u(2:3:DOF);
+% thetay = u(3:3:DOF);
 
 %% PLOTS OF STATIC PROBLEM
 % 
@@ -444,6 +453,8 @@ PSI_f = PSI(:,order);
 PSI_g = zeros(DOF,size(PSI_f,2));
 PSI_g(fdof,:) = PSI_f;
 
+fprintf('Natural frequencies and eigenmodes obtained\n');
+
 %% PLOTS OF SHAPE MODES
 
 % figure('Color','white','units','normalized','outerposition',[0 0 1 1])
@@ -495,3 +506,5 @@ freq_ss = table_ss/plate.Leissa/2/pi;
 table_ff = [13.489 19.789 24.432 35.024];          % Leissa values for a ff plate
 freq_ff = table_ff/plate.Leissa/2/pi;
 
+disp('Leissa frequencies for FFFF plate:')
+disp(['    ' num2str(freq_ff(1)) ' Hz, '  num2str(freq_ff(2)) ' Hz  ', num2str(freq_ff(3)) ' Hz  ', num2str(freq_ff(4)) ' Hz  '])
