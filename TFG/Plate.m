@@ -8,7 +8,7 @@ clc;clear;close all;
 %% MASIC AND GEOMETRIC DATA
 
 plate.E = 3E9; plate.nu = 0.3;
-plate.a = 0.169; plate.b = 0.168;                             % Plate's dimensions
+plate.a = 0.168; plate.b = 0.169;                             % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
 plate.m = 0.130;                                            % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
@@ -125,7 +125,7 @@ empty_elements = 0; beam_elements = 0; tmd_elements = 0;
 % acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
 thread_nodes = [1124 1155];                                % Nodes where the thread is placed
 thread_DOF = 3*thread_nodes;
-acc_elements = [0 0 0 0];
+acc_elements = [0 0 0 0]; thread_nodes = [0 0];
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
 PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
@@ -139,8 +139,8 @@ DOF = dofn*nn;                                          % DOF of the plate
 vdof = (1:DOF)';                                        % Vector containing all the DOF of the plate
 
 % Load applied
-P = -1;                                          
-xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
+P = -2205;                                          
+xp = 0.5; yp = 0.5;                                     % Position of the applied load (% of the length)
 
 f = 2000;                                               % Maximum frequency
 vf = (1:f);                                             % Vector of frequencies
@@ -343,9 +343,9 @@ end
 
 %  % Solve the system
  K_FF = K(fdof,fdof);         % Stiffness matrix in free DOF
- K_FF_testK_FF(thread_DOF(1), thread_DOF(1)) = K_FF(thread_DOF(1), thread_DOF(1)) + 46E3;
- K_FF_testK_FF(thread_DOF(2), thread_DOF(2)) = K_FF(thread_DOF(2), thread_DOF(2)) + 46E3;
- %K_FR = K(fdof,rdof);
+ K_FF(thread_DOF(1), thread_DOF(1)) = K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) + 1.73468E2;
+ K_FF(thread_DOF(2), thread_DOF(2)) = K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) + 1.73468E2;
+%  K_FR = K(fdof,rdof);
  M_FF = M(fdof,fdof);         % Mass matrix in free DOF
  F_F = F(fdof,1);                % Force vector in free DOF
 
@@ -354,7 +354,7 @@ end
 %  u_F = K_FF\F_F;                    % Displacements in free DOF
 %  u(fdof,1) = u_F;
 %         
-%  %F_R = K_FR'*u_F;                   % Reactions in supports 
+%  F_R = K_FR'*u_F;                   % Reactions in supports 
 % 
 % w = u(1:3:DOF);
 % thetax = u(2:3:DOF);
@@ -417,33 +417,34 @@ end
 % plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
-% 
-% q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
-% 
-% for i = 1:f
-%     D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
-%     q0_F(:,i) = D_FF(:,:)\F_F;
-%     q0(fdof,i) = q0_F(:,i);
-% end
+
+q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+
+for i = 1:f
+    D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
+    q0_F(:,i) = D_FF(:,:)\F_F;
+    q0(fdof,i) = q0_F(:,i);
+end
 
 %% PLOTS OF DYNAMIC SYSTEM
-% 
-% % Amplitude vs Frequency
-% Q0 = squeeze(q0(943,:));
-% Q1 = squeeze(q0(1,:));
-% figure()
-% semilogy(vf,abs(Q0))
-% title("Amplitude Bode Diagram")
-% 
-% figure()
-% semilogy(vf,abs(Q1))
-% 
-% figure()
-% semilogy(vf,abs(Q0./Q1))
-% 
-% % Angular offset vs Frequency
-% figure()
-% plot(vf,unwrap(angle(Q0)))
+
+% Amplitude vs Frequency
+Q0 = squeeze(q0(943,:));
+Q1 = squeeze(q0(1,:));
+figure()
+semilogy(vf,abs(Q0))
+title("Amplitude Bode Diagram")
+
+figure()
+semilogy(vf,abs(Q1))
+
+figure()
+semilogy(vf,abs(Q0./Q1))
+
+% Angular offset vs Frequency
+figure()
+plot(vf,unwrap(angle(Q0)))
+
 
 [PSI,d] = eig(K_FF,M_FF);
 [f0,order] = sort(sqrt(sum(d,1))/2./pi);
@@ -454,50 +455,50 @@ PSI_g = zeros(DOF,size(PSI_f,2));
 PSI_g(fdof,:) = PSI_f;
 
 fprintf('Natural frequencies and eigenmodes obtained\n');
-
-%% PLOTS OF SHAPE MODES
-
-% figure('Color','white','units','normalized','outerposition',[0 0 1 1])
-% modestoview = 8;
-% Ts = 1./f0(5:modestoview+4);
-% vt = (0:min(Ts)/20:1*min(Ts)); 
-% Initialization of the required matrices
-% for t=1:length(vt)
-%     for c=5:modestoview+4
-%         s(c-4) = subplot(2,modestoview/2,c-4);
-%         hold on
-%         out = PSI_g(1:3:end,c);
-%         maxout = max(max(abs(out)));
-%         X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-%         Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-%         profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
-%             for iel=1:length(structure.mesh.elements.nodes)   
-%                 for i=1:size(structure.mesh.elements.nodes,2)
-%                     nd(i)=structure.mesh.elements.nodes(iel,i);       
-%                     X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
-%                     Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
-%                 end   
-%                 profile(:,iel) = out(nd');         
-%             end
-%             profile = profile/maxout*0.1*max(plate.a,plate.b);
-%             fill3(X,Y,profile*sin(2*pi()*f0(c)*vt(t)),profile*sin(2*pi()*f0(c)*vt(t)))
-%           colorbar
-%             axis equal
-%             xlabel('x (m)')
-%             ylabel('y (m)')
-%             view(30,30)
-%             set(gca,'ZLim',[-0.1*max(plate.a,plate.b),0.1*max(plate.a,plate.b)])
-%             title(['Mode ' num2str(c) ', f_0=' num2str(round(f0(c),1)) ' Hz'])
-%             set(gca,'FontSize',14)
-%     end
-%     drawnow;
-%     if t<length(vt)
-%         for m = 1:modestoview
-%             cla(s(m));
-%         end
-%     end            
-% end
 % 
+% %% PLOTS OF SHAPE MODES
+% 
+% % figure('Color','white','units','normalized','outerposition',[0 0 1 1])
+% % modestoview = 8;
+% % Ts = 1./f0(5:modestoview+4);
+% % vt = (0:min(Ts)/20:1*min(Ts)); 
+% % Initialization of the required matrices
+% % for t=1:length(vt)
+% %     for c=5:modestoview+4
+% %         s(c-4) = subplot(2,modestoview/2,c-4);
+% %         hold on
+% %         out = PSI_g(1:3:end,c);
+% %         maxout = max(max(abs(out)));
+% %         X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+% %         Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+% %         profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)) ;
+% %             for iel=1:length(structure.mesh.elements.nodes)   
+% %                 for i=1:size(structure.mesh.elements.nodes,2)
+% %                     nd(i)=structure.mesh.elements.nodes(iel,i);       
+% %                     X(i,iel)=structure.mesh.nodes.coords(nd(i),1);    
+% %                     Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);    
+% %                 end   
+% %                 profile(:,iel) = out(nd');         
+% %             end
+% %             profile = profile/maxout*0.1*max(plate.a,plate.b);
+% %             fill3(X,Y,profile*sin(2*pi()*f0(c)*vt(t)),profile*sin(2*pi()*f0(c)*vt(t)))
+% %           colorbar
+% %             axis equal
+% %             xlabel('x (m)')
+% %             ylabel('y (m)')
+% %             view(30,30)
+% %             set(gca,'ZLim',[-0.1*max(plate.a,plate.b),0.1*max(plate.a,plate.b)])
+% %             title(['Mode ' num2str(c) ', f_0=' num2str(round(f0(c),1)) ' Hz'])
+% %             set(gca,'FontSize',14)
+% %     end
+% %     drawnow;
+% %     if t<length(vt)
+% %         for m = 1:modestoview
+% %             cla(s(m));
+% %         end
+% %     end            
+% % end
+% % 
 %% VALIDATION (LEISSA)
 
 table_ss = [19.7329 49.348 49.348 78.9568];        % Leissa values for a ss plate
