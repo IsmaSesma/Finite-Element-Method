@@ -365,12 +365,12 @@ end
 v0 = phi'*q0;                   % Amplitude of the vibration
 v0_ = phi'*q0_;
 
-figure(7)
+figure(9)
 semilogy(f,abs(abs(v0(:,:))))
 title("Response of a continuous free-free beam using Simpson's rule")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
 
-figure(8)
+figure(10)
 semilogy(f,abs(abs(v0(:,:))))
 title("Response of a continuous free-free beam unsing 'trapz' function")
 xlabel("Frecuency [Hz]"); ylabel("Transverse vibration [m]")
