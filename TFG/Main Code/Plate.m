@@ -7,8 +7,8 @@ clc;clear;close all;
 
 %% MASIC AND GEOMETRIC DATA
 
-plate.E = 3E9; plate.nu = 0.3;
-plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
+plate.E = 3.29E9; plate.nu = 0.3;
+plate.a = 0.168; plate.b = 0.169;                           % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
 plate.m = 0.130;                                            % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
@@ -17,10 +17,10 @@ plate.rhol = plate.rhos*plate.b;
 plate.I = plate.t^3/12;                                     % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
 plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);
-plate.beam_width = 0.001;                                   % Width of the tongue                               
+plate.beam_thickness = 0.001;                                   % Width of the tongue                               
 plate.Leissa = plate.a^2*sqrt(plate.rhos/plate.D);          % Parameter defined in Leissa
 acc_mass = 0.009;                                           % Mass of the accelerometers
-plate.thread_K = 3750;                                      % Stiffness of the thread in the test                                     
+plate.thread_K = 2800;                                      % Stiffness of the thread in the test                                     
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -36,25 +36,27 @@ ios = 1;     % Shear matrix
 iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
-% 
-% tmd.L = 0.005;                                               % Element length
-% tmd.Leff = 6*tmd.L + 4*tmd.L/2;                              % Effective length
-% tmd.ml = plate.rho*plate.beam_width*(6*tmd.L)*(2*tmd.L);     % Mass of the tongue
-% tmd.I = tmd.L*plate.beam_width^3/12;
-% tmd.t = 0.004:0.001:0.1;                
-% 
-% w0 = zeros(length(tmd.t),1);
-% for i = 1:length(tmd.t)
-%      w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*(tmd.L)^2*tmd.t(i)));
-% end
-% 
-% figure()
-% title('Election of tip width')
-% xlabel('Width of the extra mass')
-% ylabel('Resonance frequency')
-% plot(tmd.t,w0)
-% 
-% plate.tmd = 0.1;
+
+tmd.elements = 2; tmd.beam_elements = 8;                                            % Distribution of elements in the damper
+tmd.L = 0.005;                                                                      % Element length
+tmd.width = 0.01;                                                                   % Element width
+tmd.Leff = tmd.beam_elements*tmd.L + tmd.elements*tmd.L/2;                          % Effective length
+tmd.ml = plate.rho*plate.beam_thickness*tmd.beam_elements*tmd.L*tmd.width;          % Mass of the tongue
+tmd.I = tmd.width*plate.beam_thickness^3/12;                                        % Inertia of the tongue
+tmd.t = 0.004:0.0001:0.1;                                                           % Thickness of the TMD (design variable)              
+
+w0 = zeros(length(tmd.t),1);
+for i = 1:length(tmd.t)
+     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*tmd.elements*tmd.L*tmd.width*tmd.t(i)));
+end
+
+figure(1)
+title('Election of tip width')
+xlabel('Width of the extra mass')
+ylabel('Resonance frequency')
+plot(tmd.t,w0)
+
+plate.tmd = 0.1;
 
 %% INPUT DATA AND MESH
 
@@ -120,7 +122,8 @@ beam_elements = nonzeros(beam_elements);
 % tmd_elements = reshape(tmd_elements,[28,1]);
 
 % Decomment to simulate uniform plate
-empty_elements = 0; beam_elements = 0; tmd_elements = 0;                
+% empty_elements = 0; beam_elements = 0; 
+tmd_elements = 0;                
 
 % beam_elements = setxor(beam_elements,tmd_elements);
 acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
@@ -128,9 +131,9 @@ thread_nodes = [1124 1155];                                 % Nodes where the th
 thread_DOF = 3*thread_nodes;
 
 % Decoment to simulate uniform plate
-acc_elements = [0 0 0 0]; 
-thread_nodes = [0 0]; 
-thread_DOF = 3*thread_nodes;
+% acc_elements = [0 0 0 0]; 
+% thread_nodes = [0 0]; 
+% thread_DOF = 3*thread_nodes;
 
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -219,7 +222,7 @@ for e = 1:ne
     else
 
         if ismember(e,beam_elements)                                     % Recalculate Di for the elements with less mass
-            plate.t = plate.beam;
+            plate.t = plate.beam_thickness;
             plate.I = plate.t^3/12;
             D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];
             D_s = plate.G*plate.t*5/6*[1 0; 0 1];
@@ -352,8 +355,8 @@ end
  K_FF = K(fdof,fdof);         % Stiffness matrix in free DOF
 
  % Add the threads to simulate the real test
-%  K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) = K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) + plate.thread_K/2;
-%  K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) = K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) + plate.thread_K/2;
+ K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) = K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) + plate.thread_K/2;
+ K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) = K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) + plate.thread_K/2;
 
 %  K_FR = K(fdof,rdof);         % If restricted DOF are needed
  M_FF = M(fdof,fdof);         % Mass matrix in free DOF
@@ -474,8 +477,6 @@ PSI_g(fdof,:) = PSI_f;                  % Shape modes
 
 fprintf('Natural frequencies and eigenvectors obtained\n');
 
-return
-
 %% PLOTS OF SHAPE MODES
 
 % 3D plot
@@ -499,27 +500,27 @@ vt = (0:min(Ts)/20:1*min(Ts));
         % Loop for each mode shape that defines the position of each 
         % point and for each point its value in the mode shape vector
 
-            for iel=1:length(structure.mesh.elements.nodes)     % Each element is run 
-                for i=1:size(structure.mesh.elements.nodes,2)       % Each node of the element is run
-                    nd(i)=structure.mesh.elements.nodes(iel,i);          % Node in consideration       
-                    X(i,iel)=structure.mesh.nodes.coords(nd(i),1);       % X-coordinate of the node       
-                    Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);       % Y-coordinate of the node  
-                end   
-                profile(:,iel) = out(nd');      % Vector containing the value of the mode shape for each node         
-            end
+        for iel=1:length(structure.mesh.elements.nodes)     % Each element is run 
+            for i=1:size(structure.mesh.elements.nodes,2)       % Each node of the element is run
+                nd(i)=structure.mesh.elements.nodes(iel,i);          % Node in consideration       
+                X(i,iel)=structure.mesh.nodes.coords(nd(i),1);       % X-coordinate of the node       
+                Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);       % Y-coordinate of the node  
+            end   
+            profile(:,iel) = out(nd');      % Vector containing the value of the mode shape for each node         
+        end
 
-            profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
-       %    Decoment to see animation 
-       %    fill3(X,Y,profile*sin(2*pi*f0(c)*vt(t)),profile*sin(2*pi*f0(c)*vt(t)))
-            fill3(X,Y,profile,profile*sin(2*pi*f0(c)))
-          colorbar
-            axis equal
-            xlabel('x (m)')
-            ylabel('y (m)')
-           view(30,30)
-            set(gca,'ZLim',[-0.1*max(plate.a,plate.b),0.1*max(plate.a,plate.b)])
-            title(['Mode ' num2str(c) ', f_0=' num2str(round(f0(c),1)) ' Hz'])
-            set(gca,'FontSize',14)
+        profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
+       %Decoment to see animation 
+       %fill3(X,Y,profile*sin(2*pi*f0(c)*vt(t)),profile*sin(2*pi*f0(c)*vt(t)))
+        fill3(X,Y,profile,profile*sin(2*pi*f0(c)))
+        colorbar
+        axis equal
+        xlabel('x (m)',Interpreter='latex')
+        ylabel('y (m)',Interpreter='latex')
+        view(30,30)
+        set(gca,'ZLim',[-0.1*max(plate.a,plate.b),0.1*max(plate.a,plate.b)])
+        title(['Mode ' num2str(c) ', $f_0=$' num2str(round(f0(c),1)) ' Hz'],Interpreter="latex")
+        set(gca,'FontSize',14,'TickLabelInterpreter','latex')
      end
 %     drawnow;                            % Limited to 20 fps
 %     if t<length(vt)
@@ -544,26 +545,31 @@ for c=5:modestoview+2
     X = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes));
     Y = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes));
     profile = zeros(size(structure.mesh.elements.nodes,2),length(structure.mesh.elements.nodes)); 
+    
+    x_plot = linspace(0,plate.a,35);
+    y_plot = linspace(0, plate.b, 35);
 
-        for iel=1:length(structure.mesh.elements.nodes)     
-            for i=1:size(structure.mesh.elements.nodes,2)   
-                nd(i)=structure.mesh.elements.nodes(iel,i); 
-                X(i,iel)=structure.mesh.nodes.coords(nd(i),1);
-                Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);
-            end   
-            profile(:,iel) = out(nd');     
-        end
+    [Xp,Yp] = meshgrid(x_plot, y_plot);
+    Zp = zeros(35,35);
+    
+    for iel=1:length(structure.mesh.elements.nodes)     
+        for i=1:size(structure.mesh.elements.nodes,2)   
+            nd(i)=structure.mesh.elements.nodes(iel,i); 
+            X(i,iel)=structure.mesh.nodes.coords(nd(i),1);
+            Y(i,iel)=structure.mesh.nodes.coords(nd(i),2);
+        end   
+        profile(:,iel) = out(nd');     
+    end
 
-        %profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
-        contour(X,Y,profile)
-        axis equal
-        xlabel('x (m)')
-        ylabel('y (m)')
-        title(['Mode ' num2str(c) ', f_0=' num2str(round(f0(c),1)) ' Hz'])
-        set(gca,'FontSize',14)
+    %profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
+    contour(X,Y,profile)
+    axis equal
+    xlabel('x (m)',Interpreter='latex')
+    ylabel('y (m)',Interpreter='latex')
+    title(['Mode ' num2str(c) ', $f_0=$' num2str(round(f0(c),1)) ' Hz'],Interpreter="latex")
+    set(gca,'FontSize',14,'TickLabelInterpreter','latex')
 end
 
-return
 
 %% VALIDATION (LEISSA)
 
@@ -575,3 +581,17 @@ freq_ff = table_ff/plate.Leissa/2/pi;
 
 disp('Leissa frequencies for FFFF plate:')
 disp(['    ' num2str(freq_ff(1)) ' Hz, '  num2str(freq_ff(2)) ' Hz  ', num2str(freq_ff(3)) ' Hz  ', num2str(freq_ff(4)) ' Hz  '])
+
+%% EXPERIMENTAL RESULTS
+
+f = [134 254 324];                  % Resonance frequencies obtained in test
+E_ref_a = E_ISO(plate.a,plate.rhol,plate.I,f);
+E_ref_b = E_ISO(plate.b,plate.rhol,plate.I,f);
+
+%% FUNCTIONS
+
+function E_I = E_ISO(L,rhom,Ixx,f)                           % Young's modulus with ISO-6940 method
+    lambda = [1.87510 4.69410 7.85476];
+    E_I = rhom/Ixx*(2*pi*(L/2)^2*f./lambda.^2).^2*1E-9;
+end
+
