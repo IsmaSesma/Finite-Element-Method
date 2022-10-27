@@ -37,7 +37,7 @@ iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
 
-tmd.elements = 2; tmd.beam_elements = 8;                                            % Distribution of elements in the damper
+tmd.elements = 4; tmd.beam_elements = 6;                                            % Distribution of elements in the damper
 tmd.L = 0.005;                                                                      % Element length
 tmd.width = 0.01;                                                                   % Element width
 tmd.Leff = tmd.beam_elements*tmd.L + tmd.elements*tmd.L/2;                          % Effective length
@@ -122,7 +122,7 @@ beam_elements = nonzeros(beam_elements);
 % tmd_elements = reshape(tmd_elements,[28,1]);
 
 % Decomment to simulate uniform plate
-% empty_elements = 0; beam_elements = 0; 
+empty_elements = 0; beam_elements = 0; 
 tmd_elements = 0;                
 
 % beam_elements = setxor(beam_elements,tmd_elements);
@@ -131,9 +131,9 @@ thread_nodes = [1124 1155];                                 % Nodes where the th
 thread_DOF = 3*thread_nodes;
 
 % Decoment to simulate uniform plate
-% acc_elements = [0 0 0 0]; 
-% thread_nodes = [0 0]; 
-% thread_DOF = 3*thread_nodes;
+acc_elements = [0 0 0 0]; 
+thread_nodes = [0 0]; 
+thread_DOF = 3*thread_nodes;
 
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -355,8 +355,8 @@ end
  K_FF = K(fdof,fdof);         % Stiffness matrix in free DOF
 
  % Add the threads to simulate the real test
- K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) = K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) + plate.thread_K/2;
- K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) = K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) + plate.thread_K/2;
+%  K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) = K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) + plate.thread_K/2;
+%  K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) = K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) + plate.thread_K/2;
 
 %  K_FR = K(fdof,rdof);         % If restricted DOF are needed
  M_FF = M(fdof,fdof);         % Mass matrix in free DOF
@@ -480,7 +480,7 @@ fprintf('Natural frequencies and eigenvectors obtained\n');
 %% PLOTS OF SHAPE MODES
 
 % 3D plot
-
+% 
 figure('Color','white','units','normalized','outerposition',[0 0 1 1])
 modestoview = 6;
 Ts = 1./f0(3:size(f0,2));
@@ -563,6 +563,7 @@ for c=5:modestoview+2
 
     %profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
     contour(X,Y,profile)
+%     contour(X,Y,profile,[0 0 0],ShowText="on")
     axis equal
     xlabel('x (m)',Interpreter='latex')
     ylabel('y (m)',Interpreter='latex')

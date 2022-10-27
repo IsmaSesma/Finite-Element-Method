@@ -27,7 +27,7 @@ ne = 100;                       % Number of elements to be used (determined by w
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof;                  
-fdof = (3:DOF);                 % Free dof
+fdof = (1:DOF);                 % Free dof
 
 p = zeros(DOF,1);
 p(DOF-1)= 50;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
@@ -96,7 +96,6 @@ u = K\p;
 %% RESOLUTION OF THE CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 % Dumped is assumed negligible
-DOF = 200;
 D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
 q0_c = zeros(DOF,F); q0_l = zeros(DOF,F);
 q_c = zeros(DOF,F); q_l = zeros(DOF,F);
@@ -156,7 +155,7 @@ xlabel("Frecuency [Hz]"); ylabel("Phase [rad]")
 fprintf('Conservative system finished\n');
 
 
- return
+%  return
 %% PROPORTIONAL DAMPING MODEL ([F] = α[M] + β[K])
 
 % Dumping matrix with consistent mass matrix
