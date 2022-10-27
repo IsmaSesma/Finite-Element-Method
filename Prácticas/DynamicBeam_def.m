@@ -4,7 +4,12 @@
 % *************************************************************
 
 clc;clear;close all;
-set(0,'DefaultFigureVisible','on')
+% set(0,'DefaultFigureVisible','on')
+
+set(groot,'defaulttextinterpreter','latex');  
+set(groot, 'defaultAxesTickLabelInterpreter','latex');  
+set(groot, 'defaultLegendInterpreter','latex');
+set(groot,'defaultLineLineWidth',2)
 
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
@@ -12,9 +17,11 @@ beam.E = 210E9;                                       % Elastic modulus
 beam.L = 0.7;                                       % Beam's length
 beam.b = 0.016;                                      % Beam's width
 beam.t = 0.016;                                     % Beam's thickness
-beam.m = 1.4;                                      % Beam's mass
+beam.m = 1.097798137;                                      % Beam's mass
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
+beam.Ixx = pi*(beam.b/2)^4/4;                       % Beam's inertia if circular section
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
+beam.rho = 7800;
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
 beam.etal = [4.73 10.996 17.27876];                 % Free-Free beam's ηl coeficients
 beam.x = (0:0.001:beam.L);                          % Beam's partition
@@ -27,10 +34,10 @@ ne = 100;                       % Number of elements to be used (determined by w
 nn = ne + 1;                    % Number of nodes
 dofn = 2;                       % Degrees of freedom per node (only considering flexion)
 DOF = dofn*nn;                  % Total dof;                  
-fdof = (1:DOF);                 % Free dof
+fdof = (3:DOF);                 % Free dof
 
 p = zeros(DOF,1);
-p(DOF-1)= 50;                    % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
+p(DOF-1)= 96;                   % Input force's amplitudes (each value represents deflection and twist of each node of the beam)
 F = 2000;                       % Maximum frecuency
 f = (1:1:F);                    % Frecuency sweep of the input force
 
@@ -72,7 +79,8 @@ for e = 1:ne
 
   % First compute the consistent mass matrix
 
-    m_e = beam.rho*beam.b*beam.t*Le;            % Mass of the element          
+    m_e = beam.rho*beam.b*beam.t*Le;            % Mass of the element 
+    m_e = beam.rho*pi*(beam.t/2)^2*Le;
     Mce = m_e/420*[156 22*Le 54 -13*Le;...      % Consistent mass matrix of each element
           22*Le 4*Le^2 13*Le -3*Le^2;...
           54 13*Le 156 -22*Le;...
@@ -92,7 +100,16 @@ M = M_consist(fdof,fdof);
 p = p(fdof);
 
 u = K\p;
+%%
 
+figure(1)
+plot(u(1:2:end,1))
+
+title('Deformacion de la varilla')
+xlabel('Posicion del elemento')
+ylabel('Desplazamiento [m]')
+
+return
 %% RESOLUTION OF THE CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 % Dumped is assumed negligible

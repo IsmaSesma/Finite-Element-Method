@@ -5,6 +5,11 @@
 
 clc;clear;close all;
 
+
+set(groot,'defaulttextinterpreter','latex');  
+set(groot, 'defaultAxesTickLabelInterpreter','latex');  
+set(groot, 'defaultLegendInterpreter','latex');
+
 %% MASIC AND GEOMETRIC DATA
 
 plate.E = 3.29E9; plate.nu = 0.3;
@@ -51,10 +56,10 @@ for i = 1:length(tmd.t)
 end
 
 figure(1)
+plot(tmd.t,w0)
 title('Election of tip width')
 xlabel('Width of the extra mass')
 ylabel('Resonance frequency')
-plot(tmd.t,w0)
 
 plate.tmd = 0.1;
 
@@ -562,8 +567,8 @@ for c=5:modestoview+2
     end
 
     %profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
-    contour(X,Y,profile)
-%     contour(X,Y,profile,[0 0 0],ShowText="on")
+    %contour(X,Y,profile)
+    contour(X,Y,profile,[0 0 0],ShowText="on")
     axis equal
     xlabel('x (m)',Interpreter='latex')
     ylabel('y (m)',Interpreter='latex')
