@@ -567,8 +567,8 @@ for c=5:modestoview+2
     end
 
     %profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
-    %contour(X,Y,profile)
-    contour(X,Y,profile,[0 0 0],ShowText="on")
+    contour(X,Y,profile)
+%   contour(X,Y,profile,[0 0 0],ShowText="on")
     axis equal
     xlabel('x (m)',Interpreter='latex')
     ylabel('y (m)',Interpreter='latex')
