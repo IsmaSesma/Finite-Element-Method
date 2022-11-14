@@ -73,53 +73,54 @@ dofn = 3;                                               % DOF per node
 empty_elements = zeros(19,19);
 for i = 1:11                  % Elements that are not in the model
     if i == 11
-        empty = (i*ne_x+2):((i+1)*ne_x-5);
-        no_empty(:,1) = (i*ne_x+6):6:((i+1)*ne_x-9);
-        no_empty(:,2) = (i*ne_x+7):6:((i+1)*ne_x-9);
+        empty = ((i+1)*ne_x+3):((i+2)*ne_x-4);
+        no_empty(:,1) = ((i+1)*ne_x+7):6:((i+2)*ne_x-9);
+        no_empty(:,2) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
 
         empty = setxor(empty,no_empty);
     else
-        empty = (i*ne_x+2):3:((i+1)*ne_x-5);
+        empty = ((i+1)*ne_x+3):3:((i+2)*ne_x-4);
     end
     empty_elements(i,1:length(empty)) = empty;
     
-    j = i + 21;               % Second row of TMD      
-    if j == ne_x-2
-        empty = (j*ne_x+2):((j+1)*ne_x-5);
-        no_empty(:,1) = (j*ne_x+6):6:((j+1)*ne_x-9);
-        no_empty(:,2) = (j*ne_x+7):6:((j+1)*ne_x-9);
+    j = i + 19;               % Second row of empty material      
+    if j == ne_x-4
+        empty = ((j+1)*ne_x+3):((j+2)*ne_x-4);
+        no_empty(:,1) = ((j+1)*ne_x+7):6:((j+2)*ne_x-9);
+        no_empty(:,2) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
 
         empty = setxor(empty,no_empty);
     else
-        empty = (j*ne_x+2):3:((j+1)*ne_x-5);
+        empty = ((j+1)*ne_x+3):3:((j+2)*ne_x-4);
     end
     empty_elements(j,1:length(empty)) = empty;
 end
 
+empty_elements = nonzeros(empty_elements);
+
 % Elements of the beams
 beam_elements = zeros(); 
 for i = 1:10               
-    beam = (i*ne_x+3):((i+1)*ne_x-6);
-    empty = (i*ne_x+5):3:((i+1)*ne_x-8);
-    no_beam(:,1) = (i*ne_x+6):6:((i+1)*ne_x-10);
-    no_beam(:,2) = (i*ne_x+7):6:((i+1)*ne_x-9);
+    beam = ((i+1)*ne_x+4):((i+2)*ne_x-5);
+    empty = ((i+1)*ne_x+6):3:((i+2)*ne_x-7);
+    no_beam(:,1) = ((i+1)*ne_x+7):6:((i+2)*ne_x-9);
+    no_beam(:,2) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
  
     beam = setxor(beam,no_beam);
     beam = setxor(beam,empty);
     beam_elements(i,1:length(beam)) = beam;
     
-    j = i + 21;                
-    beam = (j*ne_x+3):((j+1)*ne_x-6);
-    empty = (j*ne_x+5):3:((j+1)*ne_x-8);
-    no_beam(:,1) = (j*ne_x+6):6:((j+1)*ne_x-10);
-    no_beam(:,2) = ((j*ne_x+7):6:((j+1)*ne_x-9));
+    j = i + 19;                
+    beam = ((j+1)*ne_x+4):((j+2)*ne_x-5);
+    empty = ((j+1)*ne_x+6):3:((j+2)*ne_x-7);
+    no_beam(:,1) = ((j+1)*ne_x+7):6:((j+2)*ne_x-9);
+    no_beam(:,2) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
 
     beam = setxor(beam,no_beam);
     beam = setxor(beam,empty);
     beam_elements(j,1:length(beam)) = beam;
 end
 
-empty_elements = nonzeros(empty_elements);
 beam_elements = nonzeros(beam_elements);
 
 % Elements that act as Tunned Mass Dumper
@@ -127,7 +128,7 @@ beam_elements = nonzeros(beam_elements);
 % tmd_elements = reshape(tmd_elements,[28,1]);
 
 % Decomment to simulate uniform plate
-empty_elements = 0; beam_elements = 0; 
+% empty_elements = 0; beam_elements = 0; 
 tmd_elements = 0;                
 
 % beam_elements = setxor(beam_elements,tmd_elements);
