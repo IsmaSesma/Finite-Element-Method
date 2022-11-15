@@ -79,7 +79,7 @@ for i = 1:11                  % Elements that are not in the model
 
         empty = setxor(empty,no_empty);
     else
-        empty = ((i+1)*ne_x+4):3:((i+2)*ne_x-3);
+        empty = ((i+1)*ne_x+3):3:((i+2)*ne_x-4);
     end
     empty_elements(i,1:length(empty)) = empty;
     
@@ -91,7 +91,7 @@ for i = 1:11                  % Elements that are not in the model
 
         empty = setxor(empty,no_empty);
     else
-        empty = ((j+1)*ne_x+4):3:((j+2)*ne_x-3);
+        empty = ((j+1)*ne_x+3):3:((j+2)*ne_x-4);
     end
     empty_elements(j,1:length(empty)) = empty;
 end
@@ -112,9 +112,9 @@ for i = 1:10
     
     j = i + 19;                
     beam = ((j+1)*ne_x+5):((j+2)*ne_x-4);
-    empty = ((j+1)*ne_x+7):3:((j+2)*ne_x-6);
-    no_beam(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
-    no_beam(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+    empty = ((j+1)*ne_x+6):3:((j+2)*ne_x-7);
+    no_beam(:,1) = ((j+1)*ne_x+7):6:((j+2)*ne_x-9);
+    no_beam(:,2) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
 
     beam = setxor(beam,no_beam);
     beam = setxor(beam,empty);
