@@ -5,15 +5,15 @@
 
 clc;clear;close all;
 
-
 set(groot,'defaulttextinterpreter','latex');  
 set(groot, 'defaultAxesTickLabelInterpreter','latex');  
 set(groot, 'defaultLegendInterpreter','latex');
+set(groot,'defaultLineLineWidth',2)
 
 %% MASIC AND GEOMETRIC DATA
 
-plate.E = 3.29E9; plate.nu = 0.3;
-plate.a = 0.168; plate.b = 0.169;                           % Plate's dimensions
+plate.E = 3.E9; plate.nu = 0.3;
+plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
 plate.m = 0.130;                                            % Plate's mass
 plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
@@ -42,7 +42,7 @@ iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
 
-tmd.elements = 4; tmd.beam_elements = 6;                                            % Distribution of elements in the damper
+tmd.elements = 2; tmd.beam_elements = 8;                                            % Distribution of elements in the damper
 tmd.L = 0.005;                                                                      % Element length
 tmd.width = 0.01;                                                                   % Element width
 tmd.Leff = tmd.beam_elements*tmd.L + tmd.elements*tmd.L/2;                          % Effective length
@@ -61,7 +61,7 @@ title('Election of tip width')
 xlabel('Width of the extra mass')
 ylabel('Resonance frequency')
 
-plate.tmd = 0.1;
+plate.tmd = 0.01;
 
 %% INPUT DATA AND MESH
 
@@ -124,11 +124,11 @@ end
 beam_elements = nonzeros(beam_elements);
 
 % Elements that act as Tunned Mass Dumper
-% tmd_elements = [beam_elements(4:5:69),beam_elements(5:5:70)];
-% tmd_elements = reshape(tmd_elements,[28,1]);
+tmd_elements = [beam_elements(4:5:69),beam_elements(5:5:70)];
+tmd_elements = reshape(tmd_elements,[28,1]);
 
 % Decomment to simulate uniform plate
-% empty_elements = 0; beam_elements = 0; 
+empty_elements = 0; beam_elements = 0; 
 tmd_elements = 0;                
 
 % beam_elements = setxor(beam_elements,tmd_elements);
@@ -143,7 +143,7 @@ thread_DOF = 3*thread_nodes;
 
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
-% PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
+PlotMesh(structure.mesh.nodes.coords,structure.mesh.elements.nodes)         % Mesh plot
 
 nne = 4;                                                % Number of nodes per element
 ne = length(structure.mesh.elements.id);                % Number of elements
@@ -155,7 +155,7 @@ vdof = (1:DOF)';                                        % Vector containing all 
 
 % Load applied
 P = 1;                                          
-xp = 0.5; yp = 0.5;                                     % Position of the applied load (% of the length)
+xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
 
 f = 2000;                                               % Maximum frequency
 vf = (1:f);                                             % Vector of frequencies
@@ -169,7 +169,7 @@ node_p = (ne_x + 1)*(iyf - 1) + ixf;
 solve = 'ff';
 
 fprintf('Mesh finished\n');
-
+ 
 %% CONNECTIVITY
 
 coord_nx = 0:plate.a/(nn_sx-1):plate.a;         % X coordinates
@@ -204,7 +204,7 @@ end
 
 % Initialization of required matrices
 K = zeros(DOF); M = zeros(DOF);F = zeros(DOF,1);
-D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];  % The inertia is included to take into account the thikness of the plate
+D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];  % The inertia is included to take into account the thicness of the plate
 D_s = plate.G*plate.t*5/6*[1 0; 0 1];
 index = zeros(2);
 
@@ -438,43 +438,43 @@ end
 
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
-% q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
-% 
-% for i = 1:f
-%     D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
-%     q0_F(:,i) = D_FF(:,:)\F_F;
-%     q0(fdof,i) = q0_F(:,i);
-% end
-% fprintf('Dynamic system computed\n')
+q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+
+for i = 1:f
+    D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
+    q0_F(:,i) = D_FF(:,:)\F_F;
+    q0(fdof,i) = q0_F(:,i);
+end
+fprintf('Dynamic system computed\n')
 
 %% PLOTS OF DYNAMIC SYSTEM
  
-% % Amplitude vs Frequency
-% Q0 = squeeze(q0(943,:));
-% Q1 = squeeze(q0(1,:));
-% figure()
-% semilogy(vf,abs(Q0))
-% title("Amplitude Bode Diagram")
-% 
-% figure()
-% semilogy(vf,abs(Q1))
-% 
-% figure()
-% semilogy(vf,abs(Q0./Q1))
-% 
-% % Angular offset vs Frequency
-% figure()
-% plot(vf,unwrap(angle(Q0)))
-% 
-% fprintf('Plots of a displacement obtained\n')
+% Amplitude vs Frequency
+Q0 = squeeze(q0(943,:));
+Q1 = squeeze(q0(1,:));
+figure()
+semilogy(vf,abs(Q0))
+title("Amplitude Bode Diagram")
 
-% Solve the system via eigs
+figure()
+semilogy(vf,abs(Q1))
+
+figure()
+semilogy(vf,abs(Q0./Q1))
+
+% Angular offset vs Frequency
+figure()
+plot(vf,unwrap(angle(Q0)))
+
+fprintf('Plots of a displacement obtained\n')
+
+%% Solve the system via eigs
 
 [PSI,d] = eigs(K_FF,M_FF, 8, "smallestabs");          % 8 eigs are computed to obtain first 4 non-zero
 [f0,order] = sort(sqrt(sum(d,1))/2./pi);              % Sort in order and transform in Hz
 
 disp('Natural frequencies:')
-disp(['   ' num2str(f0(3)) ' Hz, ' num2str(f0(4)) ' Hz, ' num2str(f0(5)) ' Hz, ' num2str(f0(6)) ' Hz, ' num2str(f0(7)) ' Hz, ' num2str(f0(8)) ' Hz'])
+disp([num2str(f0(5)) ' Hz, ' num2str(f0(6)) ' Hz, ' num2str(f0(7)) ' Hz, ' num2str(f0(8)) ' Hz'])
 
 % Eigenvectors
 PSI_f = PSI(:,order);
@@ -482,6 +482,8 @@ PSI_g = zeros(DOF,size(PSI_f,2));
 PSI_g(fdof,:) = PSI_f;                  % Shape modes                              
 
 fprintf('Natural frequencies and eigenvectors obtained\n');
+
+return
 
 %% PLOTS OF SHAPE MODES
 

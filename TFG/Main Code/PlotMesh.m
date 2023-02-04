@@ -45,9 +45,9 @@ end
      axis off ;
      axis equal;
 % To disply the node numbers     
-     k = nodes(:,1:end);
-     nd = k' ;
-    for i = 1:nel
-        text(X(:,i),Y(:,i),int2str(nd(:,i)),'fontsize',7,'color','k');
-        text(sum(X(:,i))/4,sum(Y(:,i))/4,int2str(i),'fontsize',8,'color','r') ;
-    end        
+%      k = nodes(:,1:end);
+%      nd = k' ;
+%     for i = 1:nel
+%         text(X(:,i),Y(:,i),int2str(nd(:,i)),'fontsize',7,'color','k');
+%         text(sum(X(:,i))/4,sum(Y(:,i))/4,int2str(i),'fontsize',8,'color','r') ;
+%     end        

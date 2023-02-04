@@ -9,7 +9,7 @@ clc;clear;close all
 
 %% BEAM'S PROPERTIES
 
-beam.input = importdata('data_test1\geomdata.txt',';',2);               % CHANGE THE FILE
+beam.input = importdata('geomdata.rtf',';',2);               % CHANGE THE FILE
 beam.m = beam.input.data(:,1);
 beam.L = beam.input.data(:,2);
 beam.b = beam.input.data(:,3);
@@ -30,36 +30,7 @@ beam.seed{5} = {'ZZ','T'};                                          % Infill pat
 beam.seed{6} = {'a','b','c'};                                       % Sets of the same beam (3 models of each one)
 
  % Specify the files that are going to be read here
-casestoread = {'E99001ZZa',
-'E90451ZZa',
-'E85001ZZa',
-'E70001Ta',
-'E60001Ta',
-'E50001Ta',
-'E40001Ta',
-'E99002ZZa',
-'E99003ZZa',
-'E99004ZZa',
-'E99001ZZb',
-'E90451ZZb',
-'E85001ZZb',
-'E70001Tb',
-'E60001Tb',
-'E50001Tb',
-'E40001Tc',
-'E99002ZZb',
-'E99003ZZb',
-'E99004ZZb',
-'E99001ZZc',
-'E90451ZZc',
-'E85001ZZc',
-'E70001Tc',
-'E60001Tc',
-'E50001Tc',
-'E40001Tc',
-'E99002ZZc',
-'E99003ZZc',
-'E99004ZZc'
+casestoread = {'Ensayo_Pletina_Blanca'
 };
 
 
@@ -81,8 +52,10 @@ for i=1:length(beam.seed{1})
     end
 end
 
+%% READ FILES
+
 for s=1:length(casestoread)
-    filecontent = readmatrix(['data_test1\' casestoread{s} '.csv'],'Delimiter',';','NumHeaderLines',20,'DecimalSeparator',',');             % CHANGE THE FILE
+    filecontent = readmatrix([casestoread{s} '.csv'],'Delimiter',';','NumHeaderLines',20,'DecimalSeparator',',');             % CHANGE THE FILE
     test.(casestoread{s}).freq = filecontent(:,1);
     test.(casestoread{s}).real = filecontent(:,2);
     test.(casestoread{s}).imag = filecontent(:,3);
@@ -109,7 +82,7 @@ end
 
 %% FIGURES
 figure()
-tiledlayout(5,6)
+tiledlayout(1,1)
 for t=1:length(casestoread)
     nexttile
     hold on
