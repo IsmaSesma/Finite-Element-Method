@@ -15,8 +15,8 @@ set(groot,'defaultLineLineWidth',2)
 plate.E = 3.E9; plate.nu = 0.3;
 plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
-plate.m = 0.130;                                            % Plate's mass
-plate.rho = plate.m/plate.a/plate.b/plate.t;                % Plate's density
+plate.rho = 1240;                % Plate's density
+plate.m = plate.rho*plate.a*plate.b*plate.t;                                            % Plate's mass
 plate.rhos = plate.rho*plate.t;                             % Plate's surface density
 plate.rhol = plate.rhos*plate.b;
 plate.I = plate.t^3/12;                                     % Plate's inertia
@@ -157,7 +157,7 @@ vdof = (1:DOF)';                                        % Vector containing all 
 P = 1;                                          
 xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
 
-f = 2000;                                               % Maximum frequency
+f = 1000;                                               % Maximum frequency
 vf = (1:f);                                             % Vector of frequencies
 
 % Location of the load
@@ -439,11 +439,14 @@ end
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+acc = zeros(length(fdof),f);
 
 for i = 1:f
     D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
     q0_F(:,i) = D_FF(:,:)\F_F;
     q0(fdof,i) = q0_F(:,i);
+    acc(fdof,i) = q0_F(:,i)*(2*pi*i)^2/P;
+
 end
 fprintf('Dynamic system computed\n')
 
@@ -454,10 +457,13 @@ Q0 = squeeze(q0(943,:));
 Q1 = squeeze(q0(1,:));
 figure()
 semilogy(vf,abs(Q0))
-title("Amplitude Bode Diagram")
+xlabel('Frequency [Hz]');
+ylabel('Accelerance [$m/s^2/N$]')
 
 figure()
 semilogy(vf,abs(Q1))
+xlabel('Frequency [Hz]');
+ylabel('Accelerance [$m/s^2/N$]')
 
 figure()
 semilogy(vf,abs(Q0./Q1))
@@ -468,7 +474,8 @@ plot(vf,unwrap(angle(Q0)))
 
 fprintf('Plots of a displacement obtained\n')
 
-%% Solve the system via eigs
+%%
+% Solve the system via eigs
 
 [PSI,d] = eigs(K_FF,M_FF, 8, "smallestabs");          % 8 eigs are computed to obtain first 4 non-zero
 [f0,order] = sort(sqrt(sum(d,1))/2./pi);              % Sort in order and transform in Hz
@@ -495,8 +502,8 @@ Ts = 1./f0(3:size(f0,2));
 vt = (0:min(Ts)/20:1*min(Ts)); 
 
 % for t=1:length(vt)                                  % Loop to animate the movement
-    for c=3:modestoview+2                           % For each mode considered       
-        s(c-2) = subplot(2,modestoview/2,c-2);      % Plot dimension
+    for c=5:modestoview+2                           % For each mode considered  
+        s(c-2) = subplot(2,2,c-4);      % Plot dimension
         hold on
         out = PSI_g(1:3:end,c);                     % Components of mode shapes on vertical DOF
         maxout = max(max(abs(out)));
@@ -520,6 +527,7 @@ vt = (0:min(Ts)/20:1*min(Ts));
         profile = profile/maxout*0.1*max(plate.a,plate.b);      % Rescalate the vector
        %Decoment to see animation 
        %fill3(X,Y,profile*sin(2*pi*f0(c)*vt(t)),profile*sin(2*pi*f0(c)*vt(t)))
+      
         fill3(X,Y,profile,profile*sin(2*pi*f0(c)))
         colorbar
         axis equal
@@ -527,7 +535,7 @@ vt = (0:min(Ts)/20:1*min(Ts));
         ylabel('y (m)',Interpreter='latex')
         view(30,30)
         set(gca,'ZLim',[-0.1*max(plate.a,plate.b),0.1*max(plate.a,plate.b)])
-        title(['Mode ' num2str(c) ', $f_0=$' num2str(round(f0(c),1)) ' Hz'],Interpreter="latex")
+        title(['$f_0=$' num2str(round(f0(c))) ' Hz'])
         set(gca,'FontSize',14,'TickLabelInterpreter','latex')
      end
 %     drawnow;                            % Limited to 20 fps
