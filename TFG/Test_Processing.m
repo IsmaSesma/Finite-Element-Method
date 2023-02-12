@@ -36,7 +36,7 @@ plot(test.Placa_1.freq,(test.Placa_tunned_3_2.amp))
 hold on
 plot(test.Placa_Ref.freq,(test.Placa_Ref.amp))
 set(gca,'YScale','log')
-set(gca,'XLim',[0, 1000])
+set(gca,'XLim',[0, 400])
 xlabel('Frequency [Hz]')
 ylabel('Amplitude [m/s$^2$]')
 legend('Tunned Plate','Reference Plate')

@@ -3,7 +3,7 @@
 %                 Ismael Rodríguez Sesma, ETSIAE
 % ***********************************************************************
 
-clc;clear;close all;
+% clc;clear;close all;
 
 set(groot,'defaulttextinterpreter','latex');  
 set(groot, 'defaultAxesTickLabelInterpreter','latex');  
@@ -12,17 +12,17 @@ set(groot,'defaultLineLineWidth',2)
 
 %% MASIC AND GEOMETRIC DATA
 
-plate.E = 3.E9; plate.nu = 0.3;
+plate.E = 3E9; plate.nu = 0.3;
 plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
 plate.rho = 1240;                % Plate's density
 plate.m = plate.rho*plate.a*plate.b*plate.t;                                            % Plate's mass
+plate.m = 0.137;
 plate.rhos = plate.rho*plate.t;                             % Plate's surface density
 plate.rhol = plate.rhos*plate.b;
 plate.I = plate.t^3/12;                                     % Plate's inertia
 plate.G = plate.E/2/(1 + plate.nu);
-plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);
-plate.beam_thickness = 0.001;                                   % Width of the tongue                               
+plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);                              
 plate.Leissa = plate.a^2*sqrt(plate.rhos/plate.D);          % Parameter defined in Leissa
 acc_mass = 0.009;                                           % Mass of the accelerometers
 plate.thread_K = 2800;                                      % Stiffness of the thread in the test                                     
@@ -42,26 +42,30 @@ iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
 
-tmd.elements = 2; tmd.beam_elements = 8;                                            % Distribution of elements in the damper
+tmd.elements = 1; tmd.beam_elements = 4;                                            % Distribution of elements in the damper
+plate.beam_thickness = 0.001;                                                       % Width of the tongue 
 tmd.L = 0.005;                                                                      % Element length
 tmd.width = 0.01;                                                                   % Element width
 tmd.Leff = tmd.beam_elements*tmd.L + tmd.elements*tmd.L/2;                          % Effective length
 tmd.ml = plate.rho*plate.beam_thickness*tmd.beam_elements*tmd.L*tmd.width;          % Mass of the tongue
 tmd.I = tmd.width*plate.beam_thickness^3/12;                                        % Inertia of the tongue
+
 tmd.t = 0.004:0.0001:0.1;                                                           % Thickness of the TMD (design variable)              
 
 w0 = zeros(length(tmd.t),1);
 for i = 1:length(tmd.t)
-     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*tmd.elements*tmd.L*tmd.width*tmd.t(i)));
+     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*tmd.elements*tmd.L*tmd.width*tmd.t(i)))/2/pi;
 end
 
 figure(1)
 plot(tmd.t,w0)
-title('Election of tip width')
-xlabel('Width of the extra mass')
-ylabel('Resonance frequency')
+% title('Election of tip width')
+set(gca,'XLim',[0, 0.04])
+xlabel('Thicnkess of the extra mass [m]')
 
-plate.tmd = 0.01;
+ylabel('Resonance frequency [Hz]')
+
+plate.tmd = 0.013;
 
 %% INPUT DATA AND MESH
 
@@ -69,77 +73,235 @@ ne_x = 34;                                              % Number of elements in 
 ne_y = round(ne_x/plate.a*plate.b);                     % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
-% Mesh to mitigate first mode of the free-free beam
-empty_elements = zeros(19,19);
-for i = 1:11                  % Elements that are not in the model
-    if i == 11
-        empty = ((i+1)*ne_x+4):((i+2)*ne_x-3);
-        no_empty(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
-        no_empty(:,2) = ((i+1)*ne_x+9):6:((i+2)*ne_x-7);
+plate_type = 'holed'; % Chose between locally resonant, holed or homogeneous for the meshing
+switch plate_type
+    case 'locally resonant'
+        % Mesh to mitigate first mode of the free-free beam
+        empty_elements = zeros(19,19);
+        for i = 1:6                  % Elements that are not in the model
+            if i == 6
+                empty = ((i+1)*ne_x+4):((i+2)*ne_x-3);
+                no_empty(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
+                no_empty(:,2) = ((i+1)*ne_x+9):6:((i+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((i+1)*ne_x+4):3:((i+2)*ne_x-3);
+            end
+            empty_elements(i,1:length(empty)) = empty;
+            
+            j = i + 8;                % Second row of empty material      
+            if j == 14
+                empty = ((j+1)*ne_x+4):((j+2)*ne_x-3);
+                no_empty(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
+                no_empty(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((j+1)*ne_x+4):3:((j+2)*ne_x-3);
+            end
+            empty_elements(j,1:length(empty)) = empty;
 
-        empty = setxor(empty,no_empty);
-    else
-        empty = ((i+1)*ne_x+4):3:((i+2)*ne_x-3);
-    end
-    empty_elements(i,1:length(empty)) = empty;
-    
-    j = i + 19;               % Second row of empty material      
-    if j == ne_x-4
-        empty = ((j+1)*ne_x+4):((j+2)*ne_x-3);
-        no_empty(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
-        no_empty(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+            k = j + 8;                 % Third row of empty material 
+            if k == 22
+                empty = ((k+1)*ne_x+4):((k+2)*ne_x-3);
+                no_empty(:,1) = ((k+1)*ne_x+8):6:((k+2)*ne_x-8);
+                no_empty(:,2) = ((k+1)*ne_x+9):6:((k+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((k+1)*ne_x+4):3:((k+2)*ne_x-3);
+            end
+            empty_elements(k,1:length(empty)) = empty;
 
-        empty = setxor(empty,no_empty);
-    else
-        empty = ((j+1)*ne_x+4):3:((j+2)*ne_x-3);
-    end
-    empty_elements(j,1:length(empty)) = empty;
+            l = k + 8;                  % Fourth row of empty material
+            if l == 30
+                empty = ((l+1)*ne_x+4):((l+2)*ne_x-3);
+                no_empty(:,1) = ((l+1)*ne_x+8):6:((l+2)*ne_x-8);
+                no_empty(:,2) = ((l+1)*ne_x+9):6:((l+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((l+1)*ne_x+4):3:((l+2)*ne_x-3);
+            end
+
+            empty_elements(l,1:length(empty)) = empty;
+        end
+        
+        empty_elements = nonzeros(empty_elements);
+        
+        % Elements of the beams
+        beam_elements = zeros(); 
+        for i = 1:10               
+            beam = ((i+1)*ne_x+5):((i+2)*ne_x-4);
+            empty = ((i+1)*ne_x+7):3:((i+2)*ne_x-6);
+            no_beam(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
+            no_beam(:,2) = ((i+1)*ne_x+9):6:((i+2)*ne_x-7);
+         
+            beam = setxor(beam,no_beam);
+            beam = setxor(beam,empty);
+            beam_elements(i,1:length(beam)) = beam;
+            
+            j = i + 19;                
+            beam = ((j+1)*ne_x+5):((j+2)*ne_x-4);
+            empty = ((j+1)*ne_x+7):3:((j+2)*ne_x-6);
+            no_beam(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
+            no_beam(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+        
+            beam = setxor(beam,no_beam);
+            beam = setxor(beam,empty);
+            beam_elements(j,1:length(beam)) = beam;
+        end
+        
+        beam_elements = nonzeros(beam_elements);
+        
+        % Elements that act as Tunned Mass Dumper
+        tmd_elements = [beam_elements(9:10:199),beam_elements(10:10:200)];
+        tmd_elements = sort(reshape(tmd_elements,[40,1]));
+
+        beam_elements = setxor(beam_elements, tmd_elements);
+
+    case 'holed'
+        empty_elements = zeros(19,19);
+        for i = 1:6                  % Elements that are not in the model
+            empty = ((i+1)*ne_x+4):((i+2)*ne_x-3);
+            no_empty(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
+            no_empty(:,2) = ((i+1)*ne_x+9):6:((i+2)*ne_x-7);
+        
+            empty = setxor(empty,no_empty);
+            empty_elements(i,1:length(empty)) = empty;
+            
+            j = i + 8;                % Second row of empty material      
+            
+            empty = ((j+1)*ne_x+4):((j+2)*ne_x-3);
+            no_empty(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
+            no_empty(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+        
+            empty = setxor(empty,no_empty);
+            empty_elements(j,1:length(empty)) = empty;
+
+            k = j + 8;                 % Third row of empty material 
+
+            empty = ((k+1)*ne_x+4):((k+2)*ne_x-3);
+            no_empty(:,1) = ((k+1)*ne_x+8):6:((k+2)*ne_x-8);
+            no_empty(:,2) = ((k+1)*ne_x+9):6:((k+2)*ne_x-7);
+        
+            empty = setxor(empty,no_empty);
+            empty_elements(k,1:length(empty)) = empty;
+
+            l = k + 8;                  % Fourth row of empty material
+
+            empty = ((l+1)*ne_x+4):((l+2)*ne_x-3);
+            no_empty(:,1) = ((l+1)*ne_x+8):6:((l+2)*ne_x-8);
+            no_empty(:,2) = ((l+1)*ne_x+9):6:((l+2)*ne_x-7);
+        
+            empty = setxor(empty,no_empty);
+            empty_elements(l,1:length(empty)) = empty;
+        end
+        
+        empty_elements = sort(nonzeros(empty_elements));
+
+        dof_elements = zeros(19,19);          % Elements whose DOFs do exist (contact with plate)
+        for i = 1:6                
+            
+            if i == 1
+                empty = ((i+1)*ne_x+4):((i+2)*ne_x-3);
+                no_empty(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
+                no_empty(:,2) = ((i+1)*ne_x+9):6:((i+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+
+            elseif i == 6
+                empty = ((i+1)*ne_x+4):((i+2)*ne_x-3);
+                no_empty(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
+                no_empty(:,2) = ((i+1)*ne_x+9):6:((i+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((i+1)*ne_x+4):3:((i+2)*ne_x-3);
+            end
+            dof_elements(i,1:length(empty)) = empty;
+            
+            j = i + 8;                
+            if j == 9
+                empty = ((j+1)*ne_x+4):((j+2)*ne_x-3);
+                no_empty(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
+                no_empty(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            elseif j == 14
+                empty = ((j+1)*ne_x+4):((j+2)*ne_x-3);
+                no_empty(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
+                no_empty(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((j+1)*ne_x+4):3:((j+2)*ne_x-3);
+            end
+            dof_elements(j,1:length(empty)) = empty;
+
+            k = j + 8;
+            if k == 17
+                empty = ((k+1)*ne_x+4):((k+2)*ne_x-3);
+                no_empty(:,1) = ((k+1)*ne_x+8):6:((k+2)*ne_x-8);
+                no_empty(:,2) = ((k+1)*ne_x+9):6:((k+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            elseif k == 22
+                empty = ((k+1)*ne_x+4):((k+2)*ne_x-3);
+                no_empty(:,1) = ((k+1)*ne_x+8):6:((k+2)*ne_x-8);
+                no_empty(:,2) = ((k+1)*ne_x+9):6:((k+2)*ne_x-7);
+
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((k+1)*ne_x+4):3:((k+2)*ne_x-3);
+            end
+            dof_elements(k,1:length(empty)) = empty;
+
+            l = k + 8;                 
+            if l == 25
+                empty = ((l+1)*ne_x+4):((l+2)*ne_x-3);
+                no_empty(:,1) = ((l+1)*ne_x+8):6:((l+2)*ne_x-8);
+                no_empty(:,2) = ((l+1)*ne_x+9):6:((l+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            elseif l == 30
+                empty = ((l+1)*ne_x+4):((l+2)*ne_x-3);
+                no_empty(:,1) = ((l+1)*ne_x+8):6:((l+2)*ne_x-8);
+                no_empty(:,2) = ((l+1)*ne_x+9):6:((l+2)*ne_x-7);
+        
+                empty = setxor(empty,no_empty);
+            else
+                empty = ((l+1)*ne_x+4):3:((l+2)*ne_x-3);
+            end
+
+            dof_elements(l,1:length(empty)) = empty;
+
+        end
+        
+        dof_elements = nonzeros(dof_elements);
+        nodof_elements = setxor(empty_elements, dof_elements);       % DOFs that do not exist (internal hole elements)
+        beam_elements = 0; tmd_elements = 0;
+
+    case 'homogeneous'
+        empty_elements = 0; beam_elements = 0; 
+        tmd_elements = 0;        
+        nodof_elements = 0;
 end
 
-empty_elements = nonzeros(empty_elements);
+test = 'no';     % Chose between yes or no to simulate the aditional elements in the test
+switch test
 
-% Elements of the beams
-beam_elements = zeros(); 
-for i = 1:10               
-    beam = ((i+1)*ne_x+5):((i+2)*ne_x-4);
-    empty = ((i+1)*ne_x+7):3:((i+2)*ne_x-6);
-    no_beam(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
-    no_beam(:,2) = ((i+1)*ne_x+9):6:((i+2)*ne_x-7);
- 
-    beam = setxor(beam,no_beam);
-    beam = setxor(beam,empty);
-    beam_elements(i,1:length(beam)) = beam;
-    
-    j = i + 19;                
-    beam = ((j+1)*ne_x+5):((j+2)*ne_x-4);
-    empty = ((j+1)*ne_x+7):3:((j+2)*ne_x-6);
-    no_beam(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
-    no_beam(:,2) = ((j+1)*ne_x+9):6:((j+2)*ne_x-7);
+    case 'yes'
+        acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
+        thread_nodes = [1124 1155];                                 % Nodes where the thread is placed
+        thread_DOF = 3*thread_nodes;
 
-    beam = setxor(beam,no_beam);
-    beam = setxor(beam,empty);
-    beam_elements(j,1:length(beam)) = beam;
+    case 'no'
+        acc_elements = [0 0 0 0]; 
+        thread_nodes = [0 0]; 
+        thread_DOF = 3*thread_nodes;
 end
-
-beam_elements = nonzeros(beam_elements);
-
-% Elements that act as Tunned Mass Dumper
-tmd_elements = [beam_elements(4:5:69),beam_elements(5:5:70)];
-tmd_elements = reshape(tmd_elements,[28,1]);
-
-% Decomment to simulate uniform plate
-empty_elements = 0; beam_elements = 0; 
-tmd_elements = 0;                
-
-% beam_elements = setxor(beam_elements,tmd_elements);
-acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
-thread_nodes = [1124 1155];                                 % Nodes where the thread is placed
-thread_DOF = 3*thread_nodes;
-
-% Decoment to simulate uniform plate
-acc_elements = [0 0 0 0]; 
-thread_nodes = [0 0]; 
-thread_DOF = 3*thread_nodes;
 
 % General mesh
 structure = CreateMesh(plate.a, plate.b,ne_x,ne_y);                         % Mesh definition
@@ -214,7 +376,7 @@ for e = 1:ne
    x2 = coord_n(floor((e-1)/ne_x) + 2,1,mod((e-1),ne_x) + 2); x1 = coord_n(floor((e-1)/ne_x) + 2,1,mod((e-1),ne_x) + 1);
    y2 = coord_n(floor((e-1)/ne_x) + 2,2,mod((e-1),ne_x) + 2); y1 = coord_n(floor((e-1)/ne_x) + 1,2,mod((e-1),ne_x) + 2);
    
-   xe = x2 - x1; ye = y2 - y1;                                                  % Lengths of the element on both directions
+   xe = x2 - x1; ye = y2 - y1;                                                  % Length of the element on both directions
    detJe = xe*ye/4;                                                             % Transformation's Jacobian
    dofe = [index(1,1)*dofn - 2 index(1,1)*dofn - 1 index(1,1)*dofn...           % DOF of the element
            index(1,2)*dofn - 2 index(1,2)*dofn - 1 index(1,2)*dofn...
@@ -227,13 +389,13 @@ for e = 1:ne
         Me = zeros(dofn*nne);
     else
 
-        if ismember(e,beam_elements)                                     % Recalculate Di for the elements with less mass
+        if ismember(e,beam_elements)                                     % Recalculate Di for the elements with less thicnkess
             plate.t = plate.beam_thickness;
             plate.I = plate.t^3/12;
             D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];
             D_s = plate.G*plate.t*5/6*[1 0; 0 1];
 
-        elseif ismember(e,tmd_elements)                                     % Recalculate Di for the elements with extra mass
+        elseif ismember(e,tmd_elements)                                  % Recalculate Di for the elements with extra thickness
             plate.t = plate.tmd;
             plate.I = plate.t^3/12;
             D_b = plate.I*plate.E/(1 - plate.nu^2)*[1 plate.nu 0; plate.nu 1 0; 0 0 (1 - plate.nu)/2];
@@ -280,8 +442,7 @@ for e = 1:ne
         % Inertia matrix (lumped mass)
         me = plate.rho*plate.t*xe*ye;                           % Mass of the element
         Me = zeros(dofn*nne);
-% If no aditional masses are placed decomment      
-% Me(1,1) = me/4; Me (4,4) = me/4; Me(7,7) = me/4; Me(10,10) = me/4;
+
         if isequal(e,acc_elements(1))
             Me(1,1) = me/4 + acc_mass;
 
@@ -301,20 +462,45 @@ for e = 1:ne
         end
     end
 
-        % Stiffness matrix of the element
-        Ke = Kbe + Kse;                                     
-        % Global stiffness matrix
-        K(dofe,dofe) = K(dofe,dofe) + Ke;
-        % Global inertia matrix
-        M(dofe,dofe) = M(dofe,dofe) + Me;
+    % Stiffness matrix of the element
+    Ke = Kbe + Kse;                     
+    
+    % Global stiffness matrix
+    K(dofe,dofe) = K(dofe,dofe) + Ke;
+    % Global inertia matrix
+    M(dofe,dofe) = M(dofe,dofe) + Me;
 end
+
+% Eliminate DOFs of empty nodes (empty rows and columns)
+
+no_dof = zeros(length(nodof_elements), nne*dofn);
+
+for i = 1:length(nodof_elements)
+    e_1 = nodof_elements(i);
+    index = connectivity(:,:,e_1);
+
+    dofe = [index(1,1)*dofn - 2 index(1,1)*dofn - 1 index(1,1)*dofn...
+           index(1,2)*dofn - 2 index(1,2)*dofn - 1 index(1,2)*dofn...
+           index(2,2)*dofn - 2 index(2,2)*dofn - 1 index(2,2)*dofn...
+           index(2,1)*dofn - 2 index(2,1)*dofn - 1 index(2,1)*dofn];
+
+    no_dof(i,:) = dofe;
+end
+
+no_dof = unique((reshape(no_dof,[],1)));
+
+% Reshape matrices
+
+K(no_dof,:) = [];
+K(:,no_dof) = [];
+
+M(no_dof,:) = [];
+M(:,no_dof) = [];
+
+DOF = size(K,1);           % New number of DOF
 
 % Load vector
 F(3*node_p - 2,1) = P;
-
-%% STATIC PROBLEM ([K]*u = [F])
-
-u = zeros(dofn*nn,1);
 
 % Boundary conditions for simply suported beam
 k1 = find(structure.mesh.nodes.coords == 0); k2 = find(structure.mesh.nodes.coords == plate.a);
@@ -358,19 +544,19 @@ switch solve
 end           
 
  % Solve the system
- K_FF = K(fdof,fdof);         % Stiffness matrix in free DOF
+ K_FF = K(fdof,fdof);         % Stiffness matrix for free DOF
 
  % Add the threads to simulate the real test
 %  K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) = K_FF(thread_DOF(1) - 2, thread_DOF(1) - 2) + plate.thread_K/2;
 %  K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) = K_FF(thread_DOF(2) - 2, thread_DOF(2) - 2) + plate.thread_K/2;
 
 %  K_FR = K(fdof,rdof);         % If restricted DOF are needed
- M_FF = M(fdof,fdof);         % Mass matrix in free DOF
- F_F = F(fdof,1);             % Force vector in free DOF
+ M_FF = M(fdof,fdof);         % Mass matrix for free DOF
+ F_F = F(fdof,1);             % Force vector for free DOF
 
  fprintf('Matrices computed\n');
      
-% Solve the system for restricted  DOF 
+%% Solve the system for restricted  DOF 
 % u_F = K_FF\F_F;                    % Displacements in free DOF
 % u(fdof,1) = u_F;
 %         
@@ -449,32 +635,43 @@ for i = 1:f
 
 end
 fprintf('Dynamic system computed\n')
+%%
+Q1 = squeeze(q0(1,:));
+
+figure()
+semilogy(vf,abs(Q1))
+set(gca,'XLim',[0, 1000])
+xlabel('Frequency [Hz]');
+ylabel('Accelerance [$m/s^2/N$]')
 
 %% PLOTS OF DYNAMIC SYSTEM
  
 % Amplitude vs Frequency
 Q0 = squeeze(q0(943,:));
-Q1 = squeeze(q0(1,:));
-figure()
-semilogy(vf,abs(Q0))
-xlabel('Frequency [Hz]');
-ylabel('Accelerance [$m/s^2/N$]')
+
+% figure()
+% semilogy(vf,abs(Q1))
+% set(gca,'XLim',[0, 400])
+% xlabel('Frequency [Hz]');
+% ylabel('Accelerance [$m/s^2/N$]')
 
 figure()
 semilogy(vf,abs(Q1))
+set(gca,'XLim',[0, 400])
 xlabel('Frequency [Hz]');
 ylabel('Accelerance [$m/s^2/N$]')
 
-figure()
-semilogy(vf,abs(Q0./Q1))
+% figure()
+% semilogy(vf,abs(Q0./Q1))
 
 % Angular offset vs Frequency
-figure()
-plot(vf,unwrap(angle(Q0)))
+% figure()
+% plot(vf,unwrap(angle(Q0)))
 
 fprintf('Plots of a displacement obtained\n')
 
-%%
+return
+
 % Solve the system via eigs
 
 [PSI,d] = eigs(K_FF,M_FF, 8, "smallestabs");          % 8 eigs are computed to obtain first 4 non-zero
@@ -489,8 +686,6 @@ PSI_g = zeros(DOF,size(PSI_f,2));
 PSI_g(fdof,:) = PSI_f;                  % Shape modes                              
 
 fprintf('Natural frequencies and eigenvectors obtained\n');
-
-return
 
 %% PLOTS OF SHAPE MODES
 
@@ -604,11 +799,4 @@ disp(['    ' num2str(freq_ff(1)) ' Hz, '  num2str(freq_ff(2)) ' Hz  ', num2str(f
 f = [134 254 324];                  % Resonance frequencies obtained in test
 E_ref_a = E_ISO(plate.a,plate.rhol,plate.I,f);
 E_ref_b = E_ISO(plate.b,plate.rhol,plate.I,f);
-
-%% FUNCTIONS
-
-function E_I = E_ISO(L,rhom,Ixx,f)                           % Young's modulus with ISO-6940 method
-    lambda = [1.87510 4.69410 7.85476];
-    E_I = rhom/Ixx*(2*pi*(L/2)^2*f./lambda.^2).^2*1E-9;
-end
 
