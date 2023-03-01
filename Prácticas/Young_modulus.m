@@ -2,7 +2,7 @@
 %     PROCEDURES TO OBTAIN YOUNG'S MODULUS WITH RESONANCE FREQUENCIES
 % *************************************************************************
 
-clc;clear;close all;
+%clc;clear;close all;
 
 %% MASIC AND GEOMETRIC INPUTS
 

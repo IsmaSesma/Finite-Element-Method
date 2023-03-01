@@ -3,7 +3,7 @@
 %                 Ismael Rodríguez Sesma, ETSIAE
 % ***********************************************************************
 
-% clc;clear;close all;
+ clc;clear;close all;
 
 set(groot,'defaulttextinterpreter','latex');  
 set(groot, 'defaultAxesTickLabelInterpreter','latex');  
@@ -12,7 +12,7 @@ set(groot,'defaultLineLineWidth',2)
 
 %% MASIC AND GEOMETRIC DATA
 
-plate.E = 3E9; plate.nu = 0.3;
+plate.E = 2.7E9; plate.nu = 0.3;
 plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
 plate.rho = 1240;                % Plate's density
@@ -41,7 +41,7 @@ ios = 1;     % Shear matrix
 iof = 1;     % Force vector
 
 %% TMD DIMENSIONS AND DESIGN
-
+% 
 tmd.elements = 1; tmd.beam_elements = 4;                                            % Distribution of elements in the damper
 plate.beam_thickness = 0.001;                                                       % Width of the tongue 
 tmd.L = 0.005;                                                                      % Element length
@@ -50,22 +50,24 @@ tmd.Leff = tmd.beam_elements*tmd.L + tmd.elements*tmd.L/2;                      
 tmd.ml = plate.rho*plate.beam_thickness*tmd.beam_elements*tmd.L*tmd.width;          % Mass of the tongue
 tmd.I = tmd.width*plate.beam_thickness^3/12;                                        % Inertia of the tongue
 
-tmd.t = 0.004:0.0001:0.1;                                                           % Thickness of the TMD (design variable)              
+tmd.t = 0.001:0.0001:0.1;                                                           % Thickness of the TMD (design variable)              
+beam.t = 0.001:0.001:0.01;
 
-w0 = zeros(length(tmd.t),1);
-for i = 1:length(tmd.t)
-     w0(i,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*tmd.ml/140 + plate.rho*tmd.elements*tmd.L*tmd.width*tmd.t(i)))/2/pi;
+w0 = zeros(length(tmd.t),length(beam.t),1);
+for j = 1:length(beam.t)
+    for i = 1:length(tmd.t)
+        w0(i,j,:) = sqrt(3*plate.E*tmd.I/tmd.Leff^3/(33*plate.rho*beam.t(j)*tmd.beam_elements*tmd.L*tmd.width/140 + plate.rho*tmd.elements*tmd.L*tmd.width*tmd.t(i)))/2/pi;
+    end
 end
 
 figure(1)
-plot(tmd.t,w0)
-% title('Election of tip width')
-set(gca,'XLim',[0, 0.04])
+plot(tmd.t,w0(:,:,:))
+set(gca,'XLim',[0, 0.02])
 xlabel('Thicnkess of the extra mass [m]')
 
 ylabel('Resonance frequency [Hz]')
 
-plate.tmd = 0.013;
+plate.tmd = 0.0033;      % TMD thickness chosen
 
 %% INPUT DATA AND MESH
 
@@ -73,7 +75,7 @@ ne_x = 34;                                              % Number of elements in 
 ne_y = round(ne_x/plate.a*plate.b);                     % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
-plate_type = 'holed'; % Chose between locally resonant, holed or homogeneous for the meshing
+plate_type = 'homogeneous'; % Chose between locally resonant, holed or homogeneous for the meshing
 switch plate_type
     case 'locally resonant'
         % Mesh to mitigate first mode of the free-free beam
@@ -132,7 +134,7 @@ switch plate_type
         
         % Elements of the beams
         beam_elements = zeros(); 
-        for i = 1:10               
+        for i = 1:5                         % First row               
             beam = ((i+1)*ne_x+5):((i+2)*ne_x-4);
             empty = ((i+1)*ne_x+7):3:((i+2)*ne_x-6);
             no_beam(:,1) = ((i+1)*ne_x+8):6:((i+2)*ne_x-8);
@@ -142,7 +144,7 @@ switch plate_type
             beam = setxor(beam,empty);
             beam_elements(i,1:length(beam)) = beam;
             
-            j = i + 19;                
+            j = i + 8;                     % Second row                
             beam = ((j+1)*ne_x+5):((j+2)*ne_x-4);
             empty = ((j+1)*ne_x+7):3:((j+2)*ne_x-6);
             no_beam(:,1) = ((j+1)*ne_x+8):6:((j+2)*ne_x-8);
@@ -151,13 +153,32 @@ switch plate_type
             beam = setxor(beam,no_beam);
             beam = setxor(beam,empty);
             beam_elements(j,1:length(beam)) = beam;
+
+            k = j + 8;                     % Third row
+            beam = ((k+1)*ne_x+5):((k+2)*ne_x-4);
+            empty = ((k+1)*ne_x+7):3:((k+2)*ne_x-6);
+            no_beam(:,1) = ((k+1)*ne_x+8):6:((k+2)*ne_x-8);
+            no_beam(:,2) = ((k+1)*ne_x+9):6:((k+2)*ne_x-7);
+        
+            beam = setxor(beam,no_beam);
+            beam = setxor(beam,empty);
+            beam_elements(k,1:length(beam)) = beam;
+
+            l = k + 8;                     % Fourth row
+            beam = ((l+1)*ne_x+5):((l+2)*ne_x-4);
+            empty = ((l+1)*ne_x+7):3:((l+2)*ne_x-6);
+            no_beam(:,1) = ((l+1)*ne_x+8):6:((l+2)*ne_x-8);
+            no_beam(:,2) = ((l+1)*ne_x+9):6:((l+2)*ne_x-7);
+        
+            beam = setxor(beam,no_beam);
+            beam = setxor(beam,empty);
+            beam_elements(l,1:length(beam)) = beam;
         end
         
         beam_elements = nonzeros(beam_elements);
         
         % Elements that act as Tunned Mass Dumper
-        tmd_elements = [beam_elements(9:10:199),beam_elements(10:10:200)];
-        tmd_elements = sort(reshape(tmd_elements,[40,1]));
+        tmd_elements = [beam_elements(5:5:200)];
 
         beam_elements = setxor(beam_elements, tmd_elements);
 
@@ -439,7 +460,7 @@ for e = 1:ne
         % Shear matrix of the element
         Kse = Kse + B_s'*D_s*B_s*detJe*weigth*weigth;
 
-        % Inertia matrix (lumped mass)
+        % Inertia matrix (lumped mass matrix)
         me = plate.rho*plate.t*xe*ye;                           % Mass of the element
         Me = zeros(dofn*nne);
 
@@ -473,31 +494,36 @@ end
 
 % Eliminate DOFs of empty nodes (empty rows and columns)
 
-no_dof = zeros(length(nodof_elements), nne*dofn);
+switch plate_type
 
-for i = 1:length(nodof_elements)
-    e_1 = nodof_elements(i);
-    index = connectivity(:,:,e_1);
+    case 'holed' 
+        no_dof = zeros(length(nodof_elements), nne*dofn);
 
-    dofe = [index(1,1)*dofn - 2 index(1,1)*dofn - 1 index(1,1)*dofn...
-           index(1,2)*dofn - 2 index(1,2)*dofn - 1 index(1,2)*dofn...
-           index(2,2)*dofn - 2 index(2,2)*dofn - 1 index(2,2)*dofn...
-           index(2,1)*dofn - 2 index(2,1)*dofn - 1 index(2,1)*dofn];
+        for i = 1:length(nodof_elements)
+            e_1 = nodof_elements(i);
+            index = connectivity(:,:,e_1);
 
-    no_dof(i,:) = dofe;
+            dofe = [index(1,1)*dofn - 2 index(1,1)*dofn - 1 index(1,1)*dofn...
+                index(1,2)*dofn - 2 index(1,2)*dofn - 1 index(1,2)*dofn...
+                index(2,2)*dofn - 2 index(2,2)*dofn - 1 index(2,2)*dofn...
+                index(2,1)*dofn - 2 index(2,1)*dofn - 1 index(2,1)*dofn];
+
+            no_dof(i,:) = dofe;
+        end
+
+        no_dof = unique((reshape(no_dof,[],1)));
+
+        % Reshape matrices
+
+        K(no_dof,:) = [];
+        K(:,no_dof) = [];
+
+        M(no_dof,:) = [];
+        M(:,no_dof) = [];
+
+        DOF = size(K,1);           % New number of DOF
+
 end
-
-no_dof = unique((reshape(no_dof,[],1)));
-
-% Reshape matrices
-
-K(no_dof,:) = [];
-K(:,no_dof) = [];
-
-M(no_dof,:) = [];
-M(:,no_dof) = [];
-
-DOF = size(K,1);           % New number of DOF
 
 % Load vector
 F(3*node_p - 2,1) = P;
@@ -626,24 +652,33 @@ end
 
 q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
 acc = zeros(length(fdof),f);
+D_FF = zeros(DOF, DOF);
 
 for i = 1:f
     D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF);
     q0_F(:,i) = D_FF(:,:)\F_F;
     q0(fdof,i) = q0_F(:,i);
-    acc(fdof,i) = q0_F(:,i)*(2*pi*i)^2/P;
-
+    acc(fdof,i) = q0_F(:,i)/P*i^2;
 end
 fprintf('Dynamic system computed\n')
 %%
-Q1 = squeeze(q0(1,:));
+%Q4 = squeeze(acc(1,:));
+Q4 = squeeze(acc(1,:));
 
 figure()
-semilogy(vf,abs(Q1))
-set(gca,'XLim',[0, 1000])
+semilogy(vf,abs(Q4))
+hold on
+% semilogy(vf,abs(Q1))
+% hold on
+% semilogy(vf,abs(Q3))
+hold on
+semilogy(vf,abs(Q2))
+set(gca,'XLim',[0, 400])
 xlabel('Frequency [Hz]');
 ylabel('Accelerance [$m/s^2/N$]')
+legend( 'Homogeneous plate', 'Locally resonant plate for 250 Hz')
 
+return 
 %% PLOTS OF DYNAMIC SYSTEM
  
 % Amplitude vs Frequency
@@ -656,7 +691,7 @@ Q0 = squeeze(q0(943,:));
 % ylabel('Accelerance [$m/s^2/N$]')
 
 figure()
-semilogy(vf,abs(Q1))
+semilogy(vf,abs(Q2))
 set(gca,'XLim',[0, 400])
 xlabel('Frequency [Hz]');
 ylabel('Accelerance [$m/s^2/N$]')
@@ -669,8 +704,6 @@ ylabel('Accelerance [$m/s^2/N$]')
 % plot(vf,unwrap(angle(Q0)))
 
 fprintf('Plots of a displacement obtained\n')
-
-return
 
 % Solve the system via eigs
 
