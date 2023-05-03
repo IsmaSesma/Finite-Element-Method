@@ -5,14 +5,14 @@
 
  clc;clear;close all;
 
-set(groot,'defaulttextinterpreter','latex');  
+set(groot,'defaulttextinterpreter','latex');
 set(groot, 'defaultAxesTickLabelInterpreter','latex');  
 set(groot, 'defaultLegendInterpreter','latex');
 set(groot,'defaultLineLineWidth',2)
 
 %% MASIC AND GEOMETRIC DATA
 
-plate.E = 2.7E9; plate.nu = 0.3;
+plate.E = 3E9; plate.nu = 0.3;
 plate.a = 0.17; plate.b = 0.17;                           % Plate's dimensions
 plate.t = 0.004;                                            % Plate's thickness
 plate.rho = 1240;                % Plate's density
@@ -67,7 +67,7 @@ xlabel('Thicnkess of the extra mass [m]')
 
 ylabel('Resonance frequency [Hz]')
 
-plate.tmd = 0.0033;      % TMD thickness chosen
+plate.tmd = 0.0073;      % TMD thickness chosen
 
 %% INPUT DATA AND MESH
 
@@ -75,7 +75,7 @@ ne_x = 34;                                              % Number of elements in 
 ne_y = round(ne_x/plate.a*plate.b);                     % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
-plate_type = 'homogeneous'; % Chose between locally resonant, holed or homogeneous for the meshing
+plate_type = 'locally resonant'; % Chose between locally resonant, holed or homogeneous for the meshing
 switch plate_type
     case 'locally resonant'
         % Mesh to mitigate first mode of the free-free beam
@@ -663,7 +663,7 @@ end
 fprintf('Dynamic system computed\n')
 %%
 %Q4 = squeeze(acc(1,:));
-Q4 = squeeze(acc(1,:));
+Q4 = squeeze(acc(973,:));
 
 figure()
 semilogy(vf,abs(Q4))
@@ -671,12 +671,15 @@ hold on
 % semilogy(vf,abs(Q1))
 % hold on
 % semilogy(vf,abs(Q3))
-hold on
-semilogy(vf,abs(Q2))
+% hold on
+% semilogy(vf,abs(Q2))
 set(gca,'XLim',[0, 400])
 xlabel('Frequency [Hz]');
-ylabel('Accelerance [$m/s^2/N$]')
-legend( 'Homogeneous plate', 'Locally resonant plate for 250 Hz')
+ylabel('Accelerance [m/s$^2$/N]')
+%legend( 'Homogeneous plate', 'Locally resonant plate for 250 Hz')
+box;grid
+
+%writematrix(Q4','Bot_180Hz_Data_FEM.csv')
 
 return 
 %% PLOTS OF DYNAMIC SYSTEM
