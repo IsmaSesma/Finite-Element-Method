@@ -3,7 +3,7 @@
 %                 Ismael Rodríguez Sesma, ETSIAE
 % ***********************************************************************
 
- clc;clear;close all;
+clc;clear;close all;
 
 set(groot,'defaulttextinterpreter','latex');
 set(groot, 'defaultAxesTickLabelInterpreter','latex');  
@@ -18,6 +18,7 @@ plate.t = 0.004;                                            % Plate's thickness
 plate.rho = 1240;                % Plate's density
 plate.m = plate.rho*plate.a*plate.b*plate.t;                                            % Plate's mass
 plate.m = 0.137;
+% plate.rho = plate.m/plate.a/plate.b/plate.t;
 plate.rhos = plate.rho*plate.t;                             % Plate's surface density
 plate.rhol = plate.rhos*plate.b;
 plate.I = plate.t^3/12;                                     % Plate's inertia
@@ -25,7 +26,10 @@ plate.G = plate.E/2/(1 + plate.nu);
 plate.D = plate.E*plate.t^3/12/(1 - plate.nu^2);                              
 plate.Leissa = plate.a^2*sqrt(plate.rhos/plate.D);          % Parameter defined in Leissa
 acc_mass = 0.009;                                           % Mass of the accelerometers
-plate.thread_K = 2800;                                      % Stiffness of the thread in the test                                     
+plate.thread_K = 2700;                                      % Stiffness of the thread in the test     
+
+alfa = 10E-6;
+beta = 6.46E-5;
 
 %% NUMERIC INTEGRATION DATA (Gauss-Legendre)
 
@@ -43,7 +47,7 @@ iof = 1;     % Force vector
 %% TMD DIMENSIONS AND DESIGN
 % 
 tmd.elements = 1; tmd.beam_elements = 4;                                            % Distribution of elements in the damper
-plate.beam_thickness = 0.001;                                                       % Width of the tongue 
+plate.beam_thickness = 0.001;                                                       % Thickness of the tongue 
 tmd.L = 0.005;                                                                      % Element length
 tmd.width = 0.01;                                                                   % Element width
 tmd.Leff = tmd.beam_elements*tmd.L + tmd.elements*tmd.L/2;                          % Effective length
@@ -67,7 +71,7 @@ xlabel('Thicnkess of the extra mass [m]')
 
 ylabel('Resonance frequency [Hz]')
 
-plate.tmd = 0.0073;      % TMD thickness chosen
+plate.tmd = 0.0033;      % TMD thickness chosen
 
 %% INPUT DATA AND MESH
 
@@ -75,7 +79,7 @@ ne_x = 34;                                              % Number of elements in 
 ne_y = round(ne_x/plate.a*plate.b);                     % Number of elements in Y (keep the elements as square as possible)
 dofn = 3;                                               % DOF per node
 
-plate_type = 'locally resonant'; % Chose between locally resonant, holed or homogeneous for the meshing
+plate_type = 'homogeneous'; % Chose between locally resonant, holed or homogeneous for the meshing
 switch plate_type
     case 'locally resonant'
         % Mesh to mitigate first mode of the free-free beam
@@ -314,7 +318,7 @@ test = 'no';     % Chose between yes or no to simulate the aditional elements in
 switch test
 
     case 'yes'
-        acc_elements = [1 1136 1137 1138];                          % Elements where the accelerometers are placed
+        acc_elements = [1 1138 1139 1140];                          % Elements where the accelerometers are placed
         thread_nodes = [1124 1155];                                 % Nodes where the thread is placed
         thread_DOF = 3*thread_nodes;
 
@@ -340,7 +344,7 @@ vdof = (1:DOF)';                                        % Vector containing all 
 P = 1;                                          
 xp = 0; yp = 0;                                     % Position of the applied load (% of the length)
 
-f = 1000;                                               % Maximum frequency
+f = 400;                                               % Maximum frequency
 vf = (1:f);                                             % Vector of frequencies
 
 % Location of the load
@@ -580,6 +584,8 @@ end
  M_FF = M(fdof,fdof);         % Mass matrix for free DOF
  F_F = F(fdof,1);             % Force vector for free DOF
 
+ F_c = alfa*M_FF + beta*K_FF;
+
  fprintf('Matrices computed\n');
      
 %% Solve the system for restricted  DOF 
@@ -648,6 +654,43 @@ end
 % figure()
 % plot3(structure.mesh.nodes.coords(:,1),structure.mesh.nodes.coords(:,2),w,'.')
 
+%% RESOLUTION OF THE NON-CONSERVATIVE DYNAMIC SYSTEM (q0[[K] - Ω^2[M] + i*Ω*[F]] = p0)
+
+q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
+acc = zeros(length(fdof),f);
+D_FF = zeros(DOF, DOF);
+
+for i = 1:f
+    D_FF(:,:) = (K_FF - (2*pi*i)^2*M_FF + 1i*(2*pi*i)*F_c);
+    q0_F(:,i) = D_FF(:,:)\F_F;
+    q0(fdof,i) = q0_F(:,i);
+    acc(fdof,i) = q0_F(:,i)/P*i^2;
+end
+fprintf('Dynamic damped system computed\n')
+
+%%
+%Q4 = squeeze(acc(1,:));
+Q4 = squeeze(acc(1,:));
+
+figure()
+semilogy(vf,abs(Q4))
+hold on
+% semilogy(vf,abs(Q1))
+% hold on
+% semilogy(vf,abs(Q3))
+% hold on
+% semilogy(vf,abs(Q2))
+set(gca,'XLim',[0, 400])
+set(gca, 'YLim', [10^-3, 10^4])
+xlabel('Frequency [Hz]');
+ylabel('Accelerance [m/s$^2$/N]')
+%legend( 'Homogeneous plate', 'Locally resonant plate for 250 Hz')
+box;grid
+
+%writematrix(Q4','Bot_180Hz_Data_FEM.csv')
+
+return
+
 %% DYNAMIC SYSTEM (q0[[K] - Ω^2[M]] = p0)
 
 q0 = zeros(DOF,f); q0_F = zeros(length(fdof),f);
@@ -661,9 +704,9 @@ for i = 1:f
     acc(fdof,i) = q0_F(:,i)/P*i^2;
 end
 fprintf('Dynamic system computed\n')
-%%
+
 %Q4 = squeeze(acc(1,:));
-Q4 = squeeze(acc(973,:));
+Q4 = squeeze(acc(1,:));
 
 figure()
 semilogy(vf,abs(Q4))

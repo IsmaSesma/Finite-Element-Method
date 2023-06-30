@@ -7,9 +7,14 @@
 
 clc;clear;close all
 
+set(groot,'defaulttextinterpreter','latex');
+set(groot, 'defaultAxesTickLabelInterpreter','latex');  
+set(groot, 'defaultLegendInterpreter','latex');
+set(groot,'defaultLineLineWidth',2)
+
 %% BEAM'S PROPERTIES
 
-beam.input = importdata('geomdata.rtf',';',2);               % CHANGE THE FILE
+beam.input = importdata('geomdata.txt',';',2);               % CHANGE THE FILE
 beam.m = beam.input.data(:,1);
 beam.L = beam.input.data(:,2);
 beam.b = beam.input.data(:,3);
@@ -30,27 +35,11 @@ beam.seed{5} = {'ZZ','T'};                                          % Infill pat
 beam.seed{6} = {'a','b','c'};                                       % Sets of the same beam (3 models of each one)
 
  % Specify the files that are going to be read here
-casestoread = {'Ensayo_Pletina_Blanca'
-};
-
-
-% Generate all possible combinations of beams
-
-cont = 1;
-for i=1:length(beam.seed{1})
-    for j=1:length(beam.seed{2})
-        for k=1:length(beam.seed{3})
-            for l=1:length(beam.seed{4})
-                for m=1:length(beam.seed{5})
-                    for n=1:length(beam.seed{6})
-                        beam.name{cont,1} = [beam.seed{1}{i} beam.seed{2}{j} beam.seed{3}{k} beam.seed{4}{l} beam.seed{5}{m} beam.seed{6}{n}];
-                        cont = cont + 1;
-                    end
-                end
-            end
-        end
-    end
-end
+% casestoread = {'F40153Tb','F40153Tc','F40154Ta','F40154Tb','F40154Tc','F50903Ta','F50903Tb','F50903Tc','F50904Ta','F50904Tb','F50904Tc','F70603Ta','F70603Tb','F70603Tc','F85453ZZa','F85453ZZb','F85453ZZc','F99004ZZa','F99004ZZb','F99004ZZc'};
+% casestoread = {'F40001Ta','F40001Tb','F40001Tc','F40002Ta','F40002Tb','F40002Tc','F50451Ta','F50451Tb','F50451Tc','F50902Ta','F50902Tb','F50902Tc','F70602Ta','F70602Tb','F70602Tc','F70604Ta','F70604Tb','F70604Tc','F85452ZZa','F85452ZZb','F85452ZZc','F85454ZZa','F85454ZZb','F85454ZZc','F90001ZZa','F90001ZZb','F90001ZZc','F90302ZZa','F90302ZZb','F90302ZZc','F90303ZZa','F90303ZZb','F90303ZZc','F90304ZZa','F90304ZZb','F90304ZZc','F99001ZZa','F99001ZZb','F99001ZZc','F99002ZZa','F99002ZZb','F99002ZZc','F99003ZZa','F99003ZZb','F99003ZZc'};
+% casestoread = {'F90304ZZa','F90304ZZb','F90304ZZc'};
+%casestoread = {'F40154Ta','F40154Ta','F40154Ta'};
+casestoread = {'Ensayo_Pletina_Blanca'};
 
 %% READ FILES
 
@@ -83,13 +72,17 @@ end
 %% FIGURES
 figure()
 tiledlayout(1,1)
-for t=1:length(casestoread)
+for t=1:round(length(casestoread))
     nexttile
     hold on
+    grid on
     plot(test.(casestoread{t}).freq,log(test.(casestoread{t}).amp))
-    plot(test.(casestoread{t}).rf,test.(casestoread{t}).peak,'ro')
-    plot(test.(casestoread{t}).af,test.(casestoread{t}).min,'bo')
-    title(casestoread{t})
+%     plot(test.(casestoread{t}).rf,test.(casestoread{t}).peak,'ro')
+%     plot(test.(casestoread{t}).af,test.(casestoread{t}).min,'bo')
+    set(gca, 'XLim', [10,3000])
+    xlabel('Frequency [Hz]')
+    ylabel('Accelerance [m/s$^2$/N]')
+%     title(casestoread{t})
 end
 
 %% EXPORT RESULTS TO .CSV FILE

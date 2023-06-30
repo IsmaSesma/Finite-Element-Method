@@ -13,11 +13,11 @@ set(groot,'defaultLineLineWidth',2)
 
 %% MASIC AND GEOMETRIC DATA (all in ISU)
 
-beam.E = 3E9;                                       % Elastic modulus
-beam.L = 0.17;                                       % Beam's length
-beam.b = 0.02;                                      % Beam's width
-beam.t = 0.004;                                     % Beam's thickness
-beam.m = 0.016864;                                      % Beam's mass
+beam.E = 2.7731E9;                                       % Elastic modulus
+beam.L = 0.170;                                       % Beam's length
+beam.b = 0.0295;                                      % Beam's width
+beam.t = 0.0042;                                     % Beam's thickness
+beam.m = 0.014;                                      % Beam's mass
 beam.Ixx = beam.b*beam.t^3/12;                      % Beam's area moment of inertia
 beam.rho = beam.m/beam.L/beam.b/beam.t;             % Beam's density
 beam.rhom = beam.rho*beam.b*beam.t;                 % Beam's linear mass density
@@ -102,6 +102,7 @@ p = p(fdof);
 D_c = zeros(DOF,DOF,F); D_l = zeros(DOF,DOF,F);
 q0_c = zeros(DOF,F); q0_l = zeros(DOF,F);
 q_c = zeros(DOF,F); q_l = zeros(DOF,F);
+acc = zeros(DOF,F);
 
 for i = 1:F           % This loop makes a sweep in the frecuencies up to the maximum frecuency of interest (Hz)
 
@@ -110,6 +111,8 @@ for i = 1:F           % This loop makes a sweep in the frecuencies up to the max
 
     D_l(:,:,i) = (K - (2*pi*i)^2*M_lumped);                                               % Dynamic stiffness matrix with lumped mass matrix
     q0_l(:,i) = D_l(:,:,i)\p;                                                             % Displacement's amplitudes with lumped mass matrix
+
+    acc(:,i) = q0_l(:,i)*i^2;                                                                   % Accelerance
 
 end
 
@@ -123,19 +126,25 @@ w4 = beam.etal(1,3)^2*c/beam.L^2/2/pi;
 % Squeeze of vectors of amplitude in order to simplify graphics
 
 Q0_c = squeeze(q0_c(DOF/2,:));
-Q0_l = squeeze(q0_l(DOF/2,:));
+Q0_l = squeeze(acc(DOF/2,:));
 
 %% FIGURES OF CONSERVATIVE SYSTEM
 
 % Plots Amplitude vs Frecuency ------- Plotted with Y axis as a logarithm
 fig1 = figure;
-semilogy(f,abs(Q0_c))                
+% semilogy(f,abs(Q0_c))                
+% hold on
+semilogy(f,abs(Q0_l)) 
 hold on
-semilogy(f,abs(Q0_l))      
-title("Amplitude Bode Diagram of Conservative System","FontSize",12)
-legend("Consistent mass matrix", "Lumped mass matrix")
-xlabel("Frecuency [Hz]"); ylabel("Amplitude [m]")
+grid on
+% plot(test.(casestoread{1}).freq,(test.(casestoread{1}).amp))
+% title("Amplitude Bode Diagram of Conservative System","FontSize",12) 
+legend("FEM model", "Test result")
+set(gca,'XLim',[10, 3000])
+xlabel("Frecuency [Hz]"); ylabel("Accelerance [m/s$^2$/N]")
 %savefig(fig1,'fig1.fig')
+
+%%
 
 % Find the resonance and antiresonance frequencies
 [peaks.rcons_c,locs_rc] = findpeaks(abs(Q0_c));
